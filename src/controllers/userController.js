@@ -33,7 +33,7 @@ const userController = {
   // Create a new user (for admin use)
   async createUser(req, res) {
     try {
-      const { email, password, name, role, companyId } = req.body;
+      const { email, password, name, role, companyName } = req.body;
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
@@ -47,34 +47,85 @@ const userController = {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Create user
-      const user = await prisma.user.create({
-        data: {
-          email,
-          password: hashedPassword,
-          name,
-          role,
-          companyId: role === "COMPANY" ? companyId : null,
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          company: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
+      if (role === "COMPANY") {
+        if (!companyName) {
+          return res.status(400).json({ error: "Company name is required" });
+        }
 
-      res.status(201).json(user);
+        // Check if company with this name already exists
+        const existingCompany = await prisma.company.findFirst({
+          where: { name: companyName },
+        });
+
+        if (existingCompany) {
+          return res
+            .status(400)
+            .json({ error: "Company with this name already exists" });
+        }
+
+        // Create company and user in a transaction
+        const result = await prisma.$transaction(async (prisma) => {
+          // Create company first
+          const company = await prisma.company.create({
+            data: {
+              name: companyName,
+              email,
+            },
+          });
+
+          // Create company user
+          const user = await prisma.user.create({
+            data: {
+              email,
+              password: hashedPassword,
+              name,
+              role: "COMPANY",
+              companyId: company.id,
+            },
+            include: {
+              company: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          });
+
+          return user;
+        });
+
+        // Return the result without password
+        const { password: _, ...userWithoutPassword } = result;
+        res.status(201).json(userWithoutPassword);
+      } else if (role === "FARMER") {
+        // Create farmer user
+        const user = await prisma.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            name,
+            role: "FARMER",
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        });
+
+        res.status(201).json(user);
+      } else {
+        return res
+          .status(400)
+          .json({ error: "Invalid role. Must be either FARMER or COMPANY" });
+      }
     } catch (error) {
+      console.error("Error creating user:", error);
       res.status(500).json({ error: "Failed to create user" });
     }
   },
