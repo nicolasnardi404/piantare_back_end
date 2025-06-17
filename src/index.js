@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import plantLocationRoutes from "./routes/plantLocationRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import companyRoutes from "./routes/companyRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -14,7 +17,10 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/plant-locations", plantLocationRoutes);
+app.use("/api/companies", companyRoutes);
+app.use("/api/users", userRoutes);
 
 // Basic test route
 app.get("/", (req, res) => {
