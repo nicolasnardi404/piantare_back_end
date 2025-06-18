@@ -7,6 +7,9 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
+// Get plant statistics
+// router.get("/stats", plantLocationController.getStats);
+
 // Get all plant locations (filtered by user role)
 router.get("/", plantLocationController.getAllLocations);
 
