@@ -5,6 +5,7 @@ import plantLocationRoutes from "./routes/plantLocationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -21,6 +22,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/plant-locations", plantLocationRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/uploads", uploadRoutes);
 
 // Basic test route
 app.get("/", (req, res) => {
