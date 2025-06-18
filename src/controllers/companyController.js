@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
@@ -71,6 +72,9 @@ const companyController = {
             role: "COMPANY",
             companyId: company.id,
           },
+          include: {
+            company: true,
+          },
         });
 
         return { company, user };
@@ -78,12 +82,21 @@ const companyController = {
 
       // Return the result without the password
       const { company, user } = result;
-      const safeUser = {
-        ...user,
-        password: undefined,
+      const { password: _, ...safeUser } = user;
+
+      // Generate JWT token with companyId
+      const tokenPayload = {
+        userId: user.id,
+        role: user.role,
+        companyId: company.id,
       };
 
+      const token = jwt.sign(tokenPayload, JWT_SECRET, {
+        expiresIn: "24h",
+      });
+
       res.status(201).json({
+        token,
         company,
         user: safeUser,
       });
@@ -165,6 +178,90 @@ const companyController = {
       res.json({ message: "Company deleted successfully" });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete company" });
+    }
+  },
+
+  getProfile: async (req, res) => {
+    try {
+      const companyId = req.user.companyId;
+      console.log("Fetching profile for company:", companyId);
+
+      if (!companyId) {
+        console.error("No company ID found in token:", req.user);
+        return res.status(400).json({
+          message:
+            "No company ID associated with this user. Are you logged in as a company user?",
+        });
+      }
+
+      const company = await prisma.company.findUnique({
+        where: { id: parseInt(companyId) },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          description: true,
+          logoUrl: true,
+        },
+      });
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      console.log("Found company profile:", company);
+      res.json(company);
+    } catch (error) {
+      console.error("Error fetching company profile:", error);
+      res.status(500).json({ message: "Error fetching company profile" });
+    }
+  },
+
+  updateProfile: async (req, res) => {
+    try {
+      const companyId = req.user.companyId;
+
+      if (!companyId) {
+        console.error("No company ID found in token:", req.user);
+        return res.status(400).json({
+          message:
+            "No company ID associated with this user. Are you logged in as a company user?",
+        });
+      }
+
+      const { name, email, description, logoUrl } = req.body;
+      console.log("Updating company profile with data:", {
+        name,
+        email,
+        description,
+        logoUrl,
+      });
+
+      // Only update fields that are provided
+      const updateData = {
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(description !== undefined && { description }),
+        ...(logoUrl !== undefined && { logoUrl }),
+      };
+
+      const updatedCompany = await prisma.company.update({
+        where: { id: parseInt(companyId) },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          description: true,
+          logoUrl: true,
+        },
+      });
+
+      console.log("Updated company profile:", updatedCompany);
+      res.json(updatedCompany);
+    } catch (error) {
+      console.error("Error updating company profile:", error);
+      res.status(500).json({ message: "Error updating company profile" });
     }
   },
 };

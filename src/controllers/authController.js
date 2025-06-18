@@ -34,8 +34,14 @@ const authController = {
         },
       });
 
-      // Generate JWT token
-      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+      // Generate JWT token with companyId if user is a company user
+      const tokenPayload = {
+        userId: user.id,
+        role: user.role,
+        ...(user.role === "COMPANY" && { companyId: user.companyId }),
+      };
+
+      const token = jwt.sign(tokenPayload, JWT_SECRET, {
         expiresIn: "24h",
       });
 
@@ -46,10 +52,12 @@ const authController = {
           email: user.email,
           name: user.name,
           role: user.role,
+          companyId: user.companyId,
         },
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Failed to register" });
     }
   },
 
@@ -58,9 +66,12 @@ const authController = {
     try {
       const { email, password } = req.body;
 
-      // Find user
+      // Find user with company information
       const user = await prisma.user.findUnique({
         where: { email },
+        include: {
+          company: true,
+        },
       });
 
       if (!user) {
@@ -73,8 +84,14 @@ const authController = {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      // Generate JWT token
-      const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, {
+      // Generate JWT token with companyId if user is a company user
+      const tokenPayload = {
+        userId: user.id,
+        role: user.role,
+        ...(user.role === "COMPANY" && { companyId: user.companyId }),
+      };
+
+      const token = jwt.sign(tokenPayload, JWT_SECRET, {
         expiresIn: "24h",
       });
 
@@ -85,10 +102,12 @@ const authController = {
           email: user.email,
           name: user.name,
           role: user.role,
+          companyId: user.companyId,
         },
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Failed to login" });
     }
   },
 };
