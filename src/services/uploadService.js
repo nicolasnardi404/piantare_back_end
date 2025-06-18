@@ -4,6 +4,11 @@ import path from "path";
 
 dotenv.config();
 
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  console.error("Missing Supabase configuration. Please check your .env file.");
+  process.exit(1);
+}
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -23,8 +28,8 @@ class UploadService {
       // Generate a unique filename
       const timestamp = Date.now();
       const randomString = Math.random().toString(36).substring(7);
-      const extension = path.extname(file.originalname);
-      const fileName = `${timestamp}-${randomString}${extension}`;
+      const fileExtension = file.originalname.split(".").pop();
+      const fileName = `${timestamp}-${randomString}.${fileExtension}`;
 
       // Upload file to Supabase Storage
       const { data, error } = await supabase.storage
@@ -88,3 +93,57 @@ class UploadService {
 }
 
 export default new UploadService();
+
+export const uploadFile = async (file) => {
+  if (!file) {
+    throw new Error("No file provided");
+  }
+
+  try {
+    console.log("Starting file upload to Supabase...");
+    console.log("File details:", {
+      originalname: file.originalname,
+      mimetype: file.mimetype,
+      size: file.size,
+      buffer: file.buffer ? "Present" : "Missing",
+    });
+
+    // Generate a unique filename
+    const timestamp = Date.now();
+    const randomString = Math.random().toString(36).substring(7);
+    const fileExtension = file.originalname.split(".").pop();
+    const fileName = `${timestamp}-${randomString}.${fileExtension}`;
+
+    console.log("Generated filename:", fileName);
+
+    // Upload file to Supabase Storage
+    const { data, error } = await supabase.storage
+      .from("plants")
+      .upload(fileName, file.buffer, {
+        contentType: file.mimetype,
+        cacheControl: "3600",
+      });
+
+    if (error) {
+      console.error("Supabase upload error:", error);
+      throw error;
+    }
+
+    console.log("File uploaded successfully to Supabase:", data);
+
+    // Get the public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("plants").getPublicUrl(fileName);
+
+    console.log("Generated public URL:", publicUrl);
+
+    return {
+      url: publicUrl,
+      path: fileName,
+    };
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+};

@@ -99,7 +99,7 @@ const plantLocationController = {
   // Add a new plant location (only farmers can add)
   async addLocation(req, res) {
     try {
-      const { latitude, longitude, species, description } = req.body;
+      const { latitude, longitude, species, description, imageUrl } = req.body;
       const { userId } = req.user;
 
       // Validate input
@@ -113,6 +113,7 @@ const plantLocationController = {
           longitude: parseFloat(longitude),
           species,
           description,
+          imageUrl,
           userId,
           // Initially, plants are not assigned to any company
           companyId: null,

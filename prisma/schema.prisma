@@ -53,6 +53,7 @@ model PlantLocation {
   species     String
   plantedAt   DateTime @default(now())
   description String?
+  imageUrl    String?  // URL to the plant image in Supabase storage
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -61,12 +62,36 @@ model PlantLocation {
   userId    Int
   company   Company? @relation(fields: [companyId], references: [id])
   companyId Int?
+  updates   PlantUpdate[] // Updates for this plant
 
   @@map("plant_locations")
+}
+
+model PlantUpdate {
+  id           Int          @id @default(autoincrement())
+  notes        String?
+  imageUrl     String?      // URL to the update image in Supabase storage
+  healthStatus HealthStatus @default(HEALTHY)
+  measurements Json?        // Store height, width, and additional notes as JSON
+  updateDate   DateTime     @default(now())
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relationships
+  plant    PlantLocation @relation(fields: [plantId], references: [id], onDelete: Cascade)
+  plantId  Int
+
+  @@map("plant_updates")
 }
 
 enum UserRole {
   FARMER
   COMPANY
   ADMIN
+}
+
+enum HealthStatus {
+  HEALTHY
+  NEEDS_ATTENTION
+  SICK
 }
