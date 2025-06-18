@@ -17,11 +17,11 @@ const port = process.env.PORT || 8000;
 // CORS configuration
 const corsOptions = {
   origin: [
-    "http://localhost:3000",
-    "https://plantas-milena.vercel.app",
-    "https://piantare.vercel.app",
+    // "http://localhost:3000",
+    "https://piantare-front-end.vercel.app",
+    // "https://piantare.vercel.app",
   ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
   optionsSuccessStatus: 200,
@@ -33,25 +33,20 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static("uploads")); // Serve uploaded files statically
 
-// Health check route
+// Add OPTIONS handling for preflight requests
+app.options("*", cors(corsOptions));
+
+// Routes
+app.use("/api/auth", authRoutes);
+app.use("/api/plant-locations", plantLocationRoutes);
+app.use("/api/companies", companyRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/plant-updates", plantUpdateRoutes);
+app.use("/api/uploads", uploadRoutes);
+
+// Basic test route
 app.get("/", (req, res) => {
-  res.json({ message: "Welcome to Piantare API", status: "healthy" });
-});
-
-// Routes with and without /api prefix to support both patterns
-const apiRoutes = [
-  { path: "/auth", router: authRoutes },
-  { path: "/plant-locations", router: plantLocationRoutes },
-  { path: "/companies", router: companyRoutes },
-  { path: "/users", router: userRoutes },
-  { path: "/plant-updates", router: plantUpdateRoutes },
-  { path: "/uploads", router: uploadRoutes },
-];
-
-// Register routes both with and without /api prefix
-apiRoutes.forEach(({ path, router }) => {
-  app.use(`/api${path}`, router); // With /api prefix
-  app.use(path, router); // Without /api prefix
+  res.json({ message: "Welcome to Piantare API" });
 });
 
 // Error handling middleware
@@ -65,17 +60,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Handle 404 routes
-app.use((req, res) => {
-  res.status(404).json({
-    error: {
-      message: "Route not found",
-      status: 404,
-      path: req.path,
-    },
-  });
-});
-
 // Start server
 const server = app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
@@ -84,7 +68,6 @@ const server = app.listen(port, () => {
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
   console.error("Unhandled Promise Rejection:", err);
-  // Close server & exit process
   server.close(() => process.exit(1));
 });
 
