@@ -7,8 +7,11 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticateToken);
 
+// Get plant locations for map view (public)
+router.get("/map", plantLocationController.getMapLocations);
+
 // Get plant statistics
-// router.get("/stats", plantLocationController.getStats);
+router.get("/stats", plantLocationController.getStats);
 
 // Get all plant locations (filtered by user role)
 router.get("/", plantLocationController.getAllLocations);

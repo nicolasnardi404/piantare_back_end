@@ -8,35 +8,40 @@ const plantLocationController = {
       const { role, userId } = req.user;
       let locations;
 
+      const includeOptions = {
+        addedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        company: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        updates: {
+          orderBy: {
+            updateDate: "desc",
+          },
+          take: 1,
+          select: {
+            id: true,
+            healthStatus: true,
+            updateDate: true,
+          },
+        },
+      };
+
       switch (role) {
         case "ADMIN":
           // Admin can see all plants
           locations = await prisma.plantLocation.findMany({
-            include: {
-              addedBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-              company: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              updates: {
-                orderBy: {
-                  updateDate: "desc",
-                },
-                take: 1,
-                select: {
-                  id: true,
-                  healthStatus: true,
-                  updateDate: true,
-                },
-              },
+            include: includeOptions,
+            orderBy: {
+              createdAt: "desc",
             },
           });
           break;
@@ -56,31 +61,9 @@ const plantLocationController = {
 
           locations = await prisma.plantLocation.findMany({
             where: { companyId: user.companyId },
-            include: {
-              addedBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-              company: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              updates: {
-                orderBy: {
-                  updateDate: "desc",
-                },
-                take: 1,
-                select: {
-                  id: true,
-                  healthStatus: true,
-                  updateDate: true,
-                },
-              },
+            include: includeOptions,
+            orderBy: {
+              createdAt: "desc",
             },
           });
           break;
@@ -89,31 +72,9 @@ const plantLocationController = {
           // Farmers can see all plants they've added
           locations = await prisma.plantLocation.findMany({
             where: { userId },
-            include: {
-              addedBy: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-              company: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-              updates: {
-                orderBy: {
-                  updateDate: "desc",
-                },
-                take: 1,
-                select: {
-                  id: true,
-                  healthStatus: true,
-                  updateDate: true,
-                },
-              },
+            include: includeOptions,
+            orderBy: {
+              createdAt: "desc",
             },
           });
           break;
@@ -373,6 +334,34 @@ const plantLocationController = {
     } catch (error) {
       console.error("Error in getStats:", error);
       res.status(500).json({ error: "Failed to fetch plant statistics" });
+    }
+  },
+
+  // Get plant locations optimized for map view
+  async getMapLocations(req, res) {
+    try {
+      const locations = await prisma.plantLocation.findMany({
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          species: true,
+          createdAt: true,
+          addedBy: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      res.json(locations);
+    } catch (error) {
+      console.error("Error in getMapLocations:", error);
+      res.status(500).json({ error: "Failed to fetch map locations" });
     }
   },
 };
