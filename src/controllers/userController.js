@@ -1,9 +1,69 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import User from "../models/User.js";
 
 const prisma = new PrismaClient();
 
 const userController = {
+  // Get user's own profile
+  getProfile: async (req, res) => {
+    try {
+      const userId = req.user.userId;
+
+      const user = await prisma.user.findUnique({
+        where: { id: parseInt(userId) },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          bio: true,
+          imageUrl: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error in getProfile:", error);
+      console.error("User from token:", req.user);
+      res.status(500).json({ message: "Error fetching profile" });
+    }
+  },
+
+  // Update user's own profile
+  updateProfile: async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const { name, bio, imageUrl } = req.body;
+
+      const user = await prisma.user.update({
+        where: { id: parseInt(userId) },
+        data: {
+          name: name || undefined,
+          bio: bio || undefined,
+          imageUrl: imageUrl || undefined,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          bio: true,
+          imageUrl: true,
+        },
+      });
+
+      res.json(user);
+    } catch (error) {
+      console.error("Error in updateProfile:", error);
+      res.status(500).json({ message: "Error updating profile" });
+    }
+  },
+
   // Get all users
   async getAllUsers(req, res) {
     try {

@@ -4,7 +4,11 @@ import { authenticateToken, checkRole } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// All routes require authentication and ADMIN role
+// Profile routes - only require authentication
+router.get("/profile", authenticateToken, userController.getProfile);
+router.put("/profile", authenticateToken, userController.updateProfile);
+
+// Admin routes - require authentication and ADMIN role
 router.use(authenticateToken);
 router.use(checkRole(["ADMIN"]));
 
