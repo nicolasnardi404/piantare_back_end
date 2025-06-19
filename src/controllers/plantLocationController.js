@@ -364,6 +364,49 @@ const plantLocationController = {
       res.status(500).json({ error: "Failed to fetch map locations" });
     }
   },
+
+  // Delete a plant location (farmers can only delete their own, admins can delete any)
+  async deleteLocation(req, res) {
+    try {
+      const { id } = req.params;
+      const { role, userId } = req.user;
+
+      // First check if the plant exists
+      const plant = await prisma.plantLocation.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          addedBy: {
+            select: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (!plant) {
+        return res.status(404).json({ error: "Plant location not found" });
+      }
+
+      // Check authorization
+      if (role === "FARMER" && plant.addedBy.id !== userId) {
+        return res
+          .status(403)
+          .json({ error: "You can only delete your own plants" });
+      }
+
+      // Delete the plant location
+      await prisma.plantLocation.delete({
+        where: { id: parseInt(id) },
+      });
+
+      res.json({ message: "Plant location deleted successfully" });
+    } catch (error) {
+      console.error("Error in deleteLocation:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to delete plant location" });
+    }
+  },
 };
 
 export default plantLocationController;

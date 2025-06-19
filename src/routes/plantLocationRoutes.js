@@ -20,6 +20,13 @@ router.post("/", checkRole(["FARMER"]), plantLocationController.addLocation);
 // Get a specific plant location
 router.get("/:id", plantLocationController.getLocation);
 
+// Delete a plant location (only farmers can delete their own plants, admins can delete any)
+router.delete(
+  "/:id",
+  checkRole(["FARMER", "ADMIN"]),
+  plantLocationController.deleteLocation
+);
+
 // Assign plant to company (only company admins and admins can do this)
 router.put(
   "/:id/assign-company",
