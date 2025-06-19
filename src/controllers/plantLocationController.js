@@ -93,19 +93,28 @@ const plantLocationController = {
   // Add a new plant location (only farmers can add)
   async addLocation(req, res) {
     try {
-      const { latitude, longitude, species, description, imageUrl } = req.body;
+      const { latitude, longitude, plantId, description, imageUrl } = req.body;
       const { userId } = req.user;
 
       // Validate input
-      if (!latitude || !longitude || !species) {
+      if (!latitude || !longitude || !plantId) {
         return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Verify that the plant exists
+      const plant = await prisma.plant.findUnique({
+        where: { id: parseInt(plantId) },
+      });
+
+      if (!plant) {
+        return res.status(404).json({ error: "Plant not found" });
       }
 
       const location = await prisma.plantLocation.create({
         data: {
           latitude: parseFloat(latitude),
           longitude: parseFloat(longitude),
-          species,
+          plantId: parseInt(plantId),
           description,
           imageUrl,
           userId,
@@ -113,6 +122,7 @@ const plantLocationController = {
           companyId: null,
         },
         include: {
+          plant: true,
           addedBy: {
             select: {
               id: true,

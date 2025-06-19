@@ -1,104 +1,179 @@
-const Plant = require("../models/Plant");
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 
-// Get all plants
-exports.getAllPlants = async (req, res) => {
-  try {
-    const plants = await Plant.find();
-    res.status(200).json(plants);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Erro ao buscar plantas", error: error.message });
-  }
-};
+const plantController = {
+  // Get all plants in the catalog
+  async getAllPlants(req, res) {
+    try {
+      const { page = 1, limit = 10, search = "", categoria = "" } = req.query;
 
-// Get plants by category
-exports.getPlantsByCategory = async (req, res) => {
-  try {
-    const { categoria } = req.params;
-    const plants = await Plant.find({ categoria });
-    res.status(200).json(plants);
-  } catch (error) {
-    res.status(500).json({
-      message: "Erro ao buscar plantas por categoria",
-      error: error.message,
-    });
-  }
-};
+      // Build the where clause for filtering
+      const where = {};
+      if (search) {
+        where.OR = [
+          { nomePopular: { contains: search, mode: "insensitive" } },
+          { nomeCientifico: { contains: search, mode: "insensitive" } },
+        ];
+      }
+      if (categoria) {
+        where.categoria = categoria;
+      }
 
-// Get a single plant by ID
-exports.getPlantById = async (req, res) => {
-  try {
-    const plant = await Plant.findById(req.params.id);
-    if (!plant) {
-      return res.status(404).json({ message: "Planta não encontrada" });
+      // Get total count
+      const total = await prisma.plant.count({ where });
+
+      // Get paginated plants
+      const plants = await prisma.plant.findMany({
+        where,
+        orderBy: {
+          nomePopular: "asc",
+        },
+        skip: (parseInt(page) - 1) * parseInt(limit),
+        take: parseInt(limit),
+      });
+
+      res.json({
+        plants,
+        total,
+      });
+    } catch (error) {
+      console.error("Error in getAllPlants:", error);
+      res.status(500).json({ error: "Failed to fetch plants" });
     }
-    res.status(200).json(plant);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Erro ao buscar planta", error: error.message });
-  }
-};
+  },
 
-// Create a new plant (admin only)
-exports.createPlant = async (req, res) => {
-  try {
-    const plant = new Plant(req.body);
-    await plant.save();
-    res.status(201).json(plant);
-  } catch (error) {
-    res
-      .status(400)
-      .json({ message: "Erro ao criar planta", error: error.message });
-  }
-};
+  // Get a specific plant
+  async getPlant(req, res) {
+    try {
+      const { id } = req.params;
+      const plant = await prisma.plant.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          locations: {
+            select: {
+              id: true,
+              latitude: true,
+              longitude: true,
+              plantedAt: true,
+              addedBy: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
 
-// Update a plant (admin only)
-exports.updatePlant = async (req, res) => {
-  try {
-    const plant = await Plant.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!plant) {
-      return res.status(404).json({ message: "Planta não encontrada" });
+      if (!plant) {
+        return res.status(404).json({ error: "Plant not found" });
+      }
+
+      res.json(plant);
+    } catch (error) {
+      console.error("Error in getPlant:", error);
+      res.status(500).json({ error: "Failed to fetch plant" });
     }
-    res.status(200).json(plant);
-  } catch (error) {
-    res
-      .status(400)
-      .json({ message: "Erro ao atualizar planta", error: error.message });
-  }
-};
+  },
 
-// Delete a plant (admin only)
-exports.deletePlant = async (req, res) => {
-  try {
-    const plant = await Plant.findByIdAndDelete(req.params.id);
-    if (!plant) {
-      return res.status(404).json({ message: "Planta não encontrada" });
+  // Add a new plant to the catalog (admin only)
+  async addPlant(req, res) {
+    try {
+      const {
+        nomePopular,
+        nomeCientifico,
+        origem,
+        altura,
+        especificacao,
+        categoria,
+      } = req.body;
+
+      // Validate required fields
+      if (!nomePopular || !nomeCientifico || !categoria) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const plant = await prisma.plant.create({
+        data: {
+          nomePopular,
+          nomeCientifico,
+          origem,
+          altura,
+          especificacao,
+          categoria,
+        },
+      });
+
+      res.status(201).json(plant);
+    } catch (error) {
+      console.error("Error in addPlant:", error);
+      res.status(500).json({ error: "Failed to create plant" });
     }
-    res.status(200).json({ message: "Planta removida com sucesso" });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Erro ao remover planta", error: error.message });
-  }
+  },
+
+  // Update a plant in the catalog (admin only)
+  async updatePlant(req, res) {
+    try {
+      const { id } = req.params;
+      const {
+        nomePopular,
+        nomeCientifico,
+        origem,
+        altura,
+        especificacao,
+        categoria,
+      } = req.body;
+
+      const plant = await prisma.plant.update({
+        where: { id: parseInt(id) },
+        data: {
+          nomePopular,
+          nomeCientifico,
+          origem,
+          altura,
+          especificacao,
+          categoria,
+        },
+      });
+
+      res.json(plant);
+    } catch (error) {
+      console.error("Error in updatePlant:", error);
+      res.status(500).json({ error: "Failed to update plant" });
+    }
+  },
+
+  // Delete a plant from the catalog (admin only)
+  async deletePlant(req, res) {
+    try {
+      const { id } = req.params;
+
+      // Check if plant has any locations
+      const plant = await prisma.plant.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          locations: true,
+        },
+      });
+
+      if (plant.locations.length > 0) {
+        return res.status(400).json({
+          error:
+            "Cannot delete plant that has locations. Remove all locations first.",
+        });
+      }
+
+      await prisma.plant.delete({
+        where: { id: parseInt(id) },
+      });
+
+      res.json({ message: "Plant deleted successfully" });
+    } catch (error) {
+      console.error("Error in deletePlant:", error);
+      res.status(500).json({ error: "Failed to delete plant" });
+    }
+  },
 };
 
-// Import plants from CSV data (admin only)
-exports.importPlants = async (req, res) => {
-  try {
-    const plants = req.body.plants;
-    const importedPlants = await Plant.insertMany(plants);
-    res.status(201).json({
-      message: "Plantas importadas com sucesso",
-      count: importedPlants.length,
-    });
-  } catch (error) {
-    res
-      .status(400)
-      .json({ message: "Erro ao importar plantas", error: error.message });
-  }
-};
+export default plantController;

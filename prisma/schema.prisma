@@ -53,7 +53,6 @@ model PlantLocation {
   id          Int      @id @default(autoincrement())
   latitude    Float
   longitude   Float
-  species     String
   plantedAt   DateTime @default(now())
   description String?
   imageUrl    String?  // URL to the plant image in Supabase storage
@@ -61,6 +60,8 @@ model PlantLocation {
   updatedAt   DateTime @updatedAt
 
   // Relationships
+  plant     Plant    @relation(fields: [plantId], references: [id])
+  plantId   Int
   addedBy   User    @relation(fields: [userId], references: [id])
   userId    Int
   company   Company? @relation(fields: [companyId], references: [id])
@@ -112,15 +113,18 @@ enum PlantCategory {
 }
 
 model Plant {
-  id             Int           @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   nomePopular    String
   nomeCientifico String
   origem         String?
   altura         String?
   especificacao  String?
   categoria      PlantCategory
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  // Relationships
+  locations      PlantLocation[]
 
   @@map("plants")
 }
