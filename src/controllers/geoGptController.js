@@ -54,15 +54,28 @@ function processPlantData(plants) {
 const geoGptController = {
   async analyze(req, res) {
     try {
+      console.log("Iniciando análise...");
       const { plants } = req.body;
+
+      console.log("Dados recebidos:", {
+        plantsLength: plants?.length,
+        hasPlants: !!plants,
+        isArray: Array.isArray(plants),
+      });
 
       if (!plants || !Array.isArray(plants)) {
         return res.status(400).json({ error: "Dados de plantas inválidos" });
       }
 
+      console.log("Processando dados das plantas...");
       // Process and aggregate plant data
       const processedData = processPlantData(plants);
+      console.log("Dados processados:", {
+        totalEspecies: processedData.resumo.totalEspecies,
+        totalPlantas: processedData.resumo.totalPlantas,
+      });
 
+      console.log("Preparando prompts...");
       // Prepare the analysis prompt
       const systemPrompt = `Você é um especialista em análise de impacto ambiental, com experiência em elaboração de relatórios técnicos para empresas.
 Sua tarefa é gerar uma análise técnica sobre o projeto de plantio, baseando-se nos dados fornecidos, sem fazer suposições.
@@ -91,6 +104,11 @@ ${processedData.especies
 
 Forneça uma análise técnica focando nos aspectos qualitativos do projeto, mantendo um texto coeso e profissional.`;
 
+      console.log("Verificando configuração da API...", {
+        hasApiKey: !!OPENAI_API_KEY,
+        apiUrl: OPENAI_API_URL,
+      });
+
       console.log("Enviando requisição de análise para OpenAI...");
 
       // Send request to OpenAI
@@ -113,7 +131,11 @@ Forneça uma análise técnica focando nos aspectos qualitativos do projeto, man
         }
       );
 
-      console.log("Resposta recebida da OpenAI");
+      console.log("Resposta recebida da OpenAI:", {
+        status: response.status,
+        hasChoices: !!response.data?.choices,
+        choicesLength: response.data?.choices?.length,
+      });
 
       // Send the complete analysis as a single text
       res.json({
@@ -122,7 +144,24 @@ Forneça uma análise técnica focando nos aspectos qualitativos do projeto, man
           "Análise não disponível.",
       });
     } catch (error) {
-      console.error("Erro na análise:", error.response?.data || error.message);
+      console.error("Erro na análise:", {
+        message: error.message,
+        response: error.response?.data,
+        stack: error.stack,
+        config: error.config
+          ? {
+              url: error.config.url,
+              method: error.config.method,
+              headers: {
+                ...error.config.headers,
+                Authorization: error.config.headers?.Authorization
+                  ? "[PRESENTE]"
+                  : "[AUSENTE]",
+              },
+            }
+          : null,
+      });
+
       res.status(500).json({
         error: "Falha ao analisar impacto ambiental",
         details: error.response?.data?.error?.message || error.message,
