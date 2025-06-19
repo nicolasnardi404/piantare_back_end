@@ -7,6 +7,7 @@ import companyRoutes from "./routes/companyRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
 import plantUpdateRoutes from "./routes/plantUpdateRoutes.js";
+import plantRoutes from "./routes/plantRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -43,6 +44,7 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/plant-updates", plantUpdateRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/plants", plantRoutes);
 
 // Basic test route
 app.get("/", (req, res) => {

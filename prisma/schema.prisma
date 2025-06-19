@@ -98,3 +98,29 @@ enum HealthStatus {
   NEEDS_ATTENTION
   SICK
 }
+
+enum PlantCategory {
+  ARVORES
+  ARVORES_FRUTIFERAS
+  CAPINS
+  FOLHAGENS_ALTAS
+  ARBUSTOS
+  TREPADEIRAS
+  AROMATICAS_E_COMESTIVEIS
+  PLANTAS_DE_FORRACAO
+  PLANTAS_AQUATICAS_OU_PALUSTRES
+}
+
+model Plant {
+  id             Int           @id @default(autoincrement())
+  nomePopular    String
+  nomeCientifico String
+  origem         String?
+  altura         String?
+  especificacao  String?
+  categoria      PlantCategory
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@map("plants")
+}
