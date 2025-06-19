@@ -6,6 +6,7 @@ import plantUpdateRoutes from "./routes/plantUpdateRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
+import geoGptRoutes from "./routes/geoGptRoutes.js";
 
 const app = express();
 
@@ -18,5 +19,6 @@ app.use("/api/plant-updates", plantUpdateRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use("/api/geogpt", geoGptRoutes);
 
 export default app;
