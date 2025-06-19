@@ -5,88 +5,51 @@ const plantLocationController = {
   // Get all plant locations (filtered by role)
   async getAllLocations(req, res) {
     try {
-      const { role, userId } = req.user;
-      let locations;
-
-      const includeOptions = {
-        addedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+      const locations = await prisma.plantLocation.findMany({
+        include: {
+          plant: {
+            select: {
+              id: true,
+              nomePopular: true,
+              nomeCientifico: true,
+              categoria: true,
+              altura: true,
+              origem: true,
+              especificacao: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          addedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          updates: {
+            select: {
+              id: true,
+              healthStatus: true,
+              notes: true,
+              imageUrl: true,
+              updateDate: true,
+            },
+            orderBy: {
+              updateDate: "desc",
+            },
           },
         },
-        company: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        updates: {
-          orderBy: {
-            updateDate: "desc",
-          },
-          take: 1,
-          select: {
-            id: true,
-            healthStatus: true,
-            updateDate: true,
-          },
-        },
-      };
-
-      switch (role) {
-        case "ADMIN":
-          // Admin can see all plants
-          locations = await prisma.plantLocation.findMany({
-            include: includeOptions,
-            orderBy: {
-              createdAt: "desc",
-            },
-          });
-          break;
-
-        case "COMPANY":
-          // Company admin can see plants assigned to their company
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { company: true },
-          });
-
-          if (!user.company) {
-            return res
-              .status(400)
-              .json({ error: "Company admin not associated with any company" });
-          }
-
-          locations = await prisma.plantLocation.findMany({
-            where: { companyId: user.companyId },
-            include: includeOptions,
-            orderBy: {
-              createdAt: "desc",
-            },
-          });
-          break;
-
-        case "FARMER":
-          // Farmers can see all plants they've added
-          locations = await prisma.plantLocation.findMany({
-            where: { userId },
-            include: includeOptions,
-            orderBy: {
-              createdAt: "desc",
-            },
-          });
-          break;
-
-        default:
-          return res.status(403).json({ error: "Invalid role" });
-      }
+      });
 
       res.json(locations);
     } catch (error) {
       console.error("Error in getAllLocations:", error);
-      res.status(500).json({ error: "Failed to fetch plant locations" });
+      res.status(500).json({ error: "Failed to fetch locations" });
     }
   },
 
@@ -355,11 +318,42 @@ const plantLocationController = {
           id: true,
           latitude: true,
           longitude: true,
-          species: true,
+          description: true,
+          imageUrl: true,
           createdAt: true,
+          plant: {
+            select: {
+              id: true,
+              nomePopular: true,
+              nomeCientifico: true,
+              categoria: true,
+              altura: true,
+              origem: true,
+              especificacao: true,
+            },
+          },
           addedBy: {
             select: {
+              id: true,
               name: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          updates: {
+            select: {
+              id: true,
+              healthStatus: true,
+              notes: true,
+              imageUrl: true,
+              updateDate: true,
+            },
+            orderBy: {
+              updateDate: "desc",
             },
           },
         },

@@ -6,142 +6,140 @@ const prisma = new PrismaClient();
 const plantUpdateController = {
   async createUpdate(req, res) {
     try {
-      const { plant_id } = req.params;
-      const { notes, health_status, measurements } = req.body;
+      console.log("Received request body:", req.body);
+      const { plantLocationId, healthStatus, notes, imageUrl } = req.body;
+      const { userId } = req.user;
 
-      // Check if plant exists and user has permission
-      const plant = await prisma.plantLocation.findUnique({
-        where: { id: parseInt(plant_id) },
-        include: { addedBy: true },
-      });
-
-      if (!plant) {
-        return res.status(404).json({ error: "Plant not found" });
+      // Validate input
+      if (!plantLocationId || !healthStatus) {
+        return res.status(400).json({ error: "Missing required fields" });
       }
 
-      if (plant.addedBy.id !== req.user.userId) {
-        return res
-          .status(403)
-          .json({ error: "Not authorized to update this plant" });
-      }
-
-      let imageUrl = null;
-      if (req.file) {
-        try {
-          const uploadResult = await uploadFile(req.file);
-          imageUrl = uploadResult.url;
-          console.log("File uploaded successfully:", uploadResult);
-        } catch (uploadError) {
-          console.error("Error uploading file:", uploadError);
-          return res.status(500).json({ error: "Failed to upload image" });
-        }
-      }
-
-      const parsedMeasurements =
-        typeof measurements === "string"
-          ? JSON.parse(measurements)
-          : measurements;
-
-      const update = await prisma.plantUpdate.create({
-        data: {
-          plantId: parseInt(plant_id),
-          imageUrl,
-          notes,
-          healthStatus: health_status.toUpperCase(),
-          measurements: parsedMeasurements || {},
-          updateDate: new Date().toISOString(),
-        },
-      });
-
-      res.status(201).json(update);
-    } catch (error) {
-      console.error("Error creating plant update:", error);
-      res.status(500).json({ error: "Failed to create plant update" });
-    }
-  },
-
-  async getUpdates(req, res) {
-    try {
-      const { plant_id } = req.params;
-
-      const updates = await prisma.plantUpdate.findMany({
-        where: { plantId: parseInt(plant_id) },
-        orderBy: { updateDate: "desc" },
+      // Check if the plant location exists and belongs to the user
+      const plantLocation = await prisma.plantLocation.findUnique({
+        where: { id: parseInt(plantLocationId) },
         select: {
           id: true,
-          notes: true,
-          imageUrl: true,
-          healthStatus: true,
-          measurements: true,
-          updateDate: true,
-          createdAt: true,
-          updatedAt: true,
+          userId: true,
         },
       });
 
-      // Format dates as ISO strings
-      const formattedUpdates = updates.map((update) => ({
-        ...update,
-        updateDate: update.updateDate.toISOString(),
-        createdAt: update.createdAt.toISOString(),
-        updatedAt: update.updatedAt.toISOString(),
-      }));
+      if (!plantLocation) {
+        return res.status(404).json({ error: "Plant location not found" });
+      }
 
-      res.json(formattedUpdates);
+      // Verify that the user owns this plant
+      if (plantLocation.userId !== userId) {
+        return res
+          .status(403)
+          .json({ error: "You can only update your own plants" });
+      }
+
+      // Create the update
+      const update = await prisma.plantUpdate.create({
+        data: {
+          healthStatus,
+          notes,
+          imageUrl,
+          updateDate: new Date(),
+          plantId: parseInt(plantLocationId),
+        },
+        include: {
+          plant: {
+            select: {
+              id: true,
+              plant: {
+                select: {
+                  nomePopular: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      console.log("Created update:", update);
+      res.status(201).json(update);
     } catch (error) {
-      console.error("Error fetching plant updates:", error);
-      res.status(500).json({ error: "Failed to fetch plant updates" });
+      console.error("Error in createUpdate:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to create update" });
     }
   },
 
-  async getUpdate(req, res) {
+  async getUpdatesByPlant(req, res) {
     try {
-      const { id } = req.params;
+      const { plantLocationId } = req.params;
+      const { userId } = req.user;
 
-      const update = await prisma.plantUpdate.findUnique({
-        where: { id: parseInt(id) },
-        include: { plant: { include: { addedBy: true } } },
+      // Check if the plant location exists and belongs to the user
+      const plantLocation = await prisma.plantLocation.findUnique({
+        where: { id: parseInt(plantLocationId) },
+        select: {
+          id: true,
+          userId: true,
+        },
       });
 
-      if (!update) {
-        return res.status(404).json({ error: "Update not found" });
+      if (!plantLocation) {
+        return res.status(404).json({ error: "Plant location not found" });
       }
 
-      res.json(update);
+      // Get all updates for this plant
+      const updates = await prisma.plantUpdate.findMany({
+        where: { plantLocationId: parseInt(plantLocationId) },
+        orderBy: {
+          updateDate: "desc",
+        },
+      });
+
+      res.json(updates);
     } catch (error) {
-      console.error("Error fetching plant update:", error);
-      res.status(500).json({ error: "Failed to fetch plant update" });
+      console.error("Error in getUpdatesByPlant:", error);
+      res.status(500).json({ error: "Failed to fetch updates" });
     }
   },
 
   async deleteUpdate(req, res) {
     try {
       const { id } = req.params;
+      const { userId } = req.user;
 
+      // Check if the update exists and belongs to a plant owned by the user
       const update = await prisma.plantUpdate.findUnique({
         where: { id: parseInt(id) },
-        include: { plant: { include: { addedBy: true } } },
+        include: {
+          plantLocation: {
+            select: {
+              userId: true,
+            },
+          },
+        },
       });
 
       if (!update) {
         return res.status(404).json({ error: "Update not found" });
       }
 
-      // Check if user has permission to delete
-      if (update.plant.addedBy.id !== req.user.userId) {
+      // Verify that the user owns the plant this update belongs to
+      if (update.plantLocation.userId !== userId) {
         return res
           .status(403)
-          .json({ error: "Not authorized to delete this update" });
+          .json({ error: "You can only delete updates for your own plants" });
       }
 
+      // Delete the update
       await prisma.plantUpdate.delete({
         where: { id: parseInt(id) },
       });
 
       res.json({ message: "Update deleted successfully" });
     } catch (error) {
-      console.error("Error deleting plant update:", error);
-      res.status(500).json({ error: "Failed to delete plant update" });
+      console.error("Error in deleteUpdate:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to delete update" });
     }
   },
 };

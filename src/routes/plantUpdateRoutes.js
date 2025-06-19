@@ -1,27 +1,29 @@
 import express from "express";
 import plantUpdateController from "../controllers/plantUpdateController.js";
-import { authenticateToken } from "../middleware/auth.js";
+import { authenticateToken, checkRole } from "../middleware/auth.js";
 import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
-// All routes require authentication
+// Protected routes (require authentication)
 router.use(authenticateToken);
 
-// Create a new update for a plant
+// Create a new update (only farmers can update their own plants)
 router.post(
-  "/:plant_id/updates",
+  "/",
+  checkRole(["FARMER"]),
   upload.single("image"),
   plantUpdateController.createUpdate
 );
 
-// Get all updates for a plant
-router.get("/:plant_id/updates", plantUpdateController.getUpdates);
+// Get updates for a specific plant
+router.get("/plant/:plantLocationId", plantUpdateController.getUpdatesByPlant);
 
-// Get a specific update
-router.get("/updates/:id", plantUpdateController.getUpdate);
-
-// Delete an update
-router.delete("/updates/:id", plantUpdateController.deleteUpdate);
+// Delete an update (only farmers can delete their own updates)
+router.delete(
+  "/:id",
+  checkRole(["FARMER"]),
+  plantUpdateController.deleteUpdate
+);
 
 export default router;
