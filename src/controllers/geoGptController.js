@@ -111,6 +111,15 @@ Forneça uma análise técnica focando nos aspectos qualitativos do projeto, man
 
       console.log("Enviando requisição de análise para OpenAI...");
 
+      // Add timeout to axios request
+      const axiosConfig = {
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 55000, // 55 seconds timeout (leaving 5 seconds buffer for serverless function)
+      };
+
       // Send request to OpenAI
       const response = await axios.post(
         OPENAI_API_URL,
@@ -123,12 +132,7 @@ Forneça uma análise técnica focando nos aspectos qualitativos do projeto, man
           temperature: 0.7,
           max_tokens: 1500,
         },
-        {
-          headers: {
-            Authorization: `Bearer ${OPENAI_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
+        axiosConfig
       );
 
       console.log("Resposta recebida da OpenAI:", {
