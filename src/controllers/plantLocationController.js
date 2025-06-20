@@ -29,6 +29,8 @@ const plantLocationController = {
               id: true,
               name: true,
               email: true,
+              bio: true,
+              imageUrl: true,
             },
           },
           updates: {
