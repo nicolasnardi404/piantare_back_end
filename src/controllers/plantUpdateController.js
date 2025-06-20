@@ -7,11 +7,12 @@ const plantUpdateController = {
   async createUpdate(req, res) {
     try {
       console.log("Received request body:", req.body);
-      const { plantLocationId, healthStatus, notes, imageUrl } = req.body;
+      const { plantLocationId, healthStatus, notes, imageUrl, measurements } =
+        req.body;
       const { userId } = req.user;
 
       // Validate input
-      if (!plantLocationId || !healthStatus) {
+      if (!plantLocationId || !healthStatus || !measurements) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
@@ -41,6 +42,7 @@ const plantUpdateController = {
           healthStatus,
           notes,
           imageUrl,
+          measurements,
           updateDate: new Date(),
           plantId: parseInt(plantLocationId),
         },

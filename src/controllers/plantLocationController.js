@@ -5,7 +5,37 @@ const plantLocationController = {
   // Get all plant locations (filtered by role)
   async getAllLocations(req, res) {
     try {
+      const { role, userId } = req.user;
+      let whereClause = {};
+
+      // Filter plants based on user role
+      switch (role) {
+        case "ADMIN":
+          // Admin can see all plants
+          break;
+        case "COMPANY":
+          // Company users can only see their company's plants
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { company: true },
+          });
+          if (!user.company) {
+            return res
+              .status(400)
+              .json({ error: "User not associated with any company" });
+          }
+          whereClause.companyId = user.companyId;
+          break;
+        case "FARMER":
+          // Farmers can only see their own plants
+          whereClause.userId = userId;
+          break;
+        default:
+          return res.status(403).json({ error: "Invalid role" });
+      }
+
       const locations = await prisma.plantLocation.findMany({
+        where: whereClause,
         include: {
           plant: {
             select: {
@@ -39,6 +69,7 @@ const plantLocationController = {
               healthStatus: true,
               notes: true,
               imageUrl: true,
+              measurements: true,
               updateDate: true,
             },
             orderBy: {
@@ -58,12 +89,22 @@ const plantLocationController = {
   // Add a new plant location (only farmers can add)
   async addLocation(req, res) {
     try {
-      const { latitude, longitude, plantId, description, imageUrl } = req.body;
+      const {
+        latitude,
+        longitude,
+        plantId,
+        description,
+        imageUrl,
+        measurements,
+      } = req.body;
       const { userId } = req.user;
 
       // Validate input
-      if (!latitude || !longitude || !plantId) {
-        return res.status(400).json({ error: "Missing required fields" });
+      if (!latitude || !longitude || !plantId || !imageUrl || !measurements) {
+        return res.status(400).json({
+          error:
+            "Missing required fields. Please provide latitude, longitude, plantId, imageUrl, and initial measurements",
+        });
       }
 
       // Verify that the plant exists
@@ -75,33 +116,57 @@ const plantLocationController = {
         return res.status(404).json({ error: "Plant not found" });
       }
 
-      const location = await prisma.plantLocation.create({
-        data: {
-          latitude: parseFloat(latitude),
-          longitude: parseFloat(longitude),
-          plantId: parseInt(plantId),
-          description,
-          imageUrl,
-          userId,
-          // Initially, plants are not assigned to any company
-          companyId: null,
-        },
-        include: {
-          plant: true,
-          addedBy: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+      // Use a transaction to create both the location and initial update
+      const location = await prisma.$transaction(async (prisma) => {
+        // Create the plant location
+        const newLocation = await prisma.plantLocation.create({
+          data: {
+            latitude: parseFloat(latitude),
+            longitude: parseFloat(longitude),
+            plantId: parseInt(plantId),
+            description,
+            userId,
+            companyId: null, // Initially, plants are not assigned to any company
+          },
+        });
+
+        // Create the initial plant update
+        await prisma.plantUpdate.create({
+          data: {
+            plantId: newLocation.id,
+            imageUrl,
+            measurements,
+            notes: "Initial plant registration",
+            healthStatus: "HEALTHY",
+          },
+        });
+
+        // Return the location with all related data
+        return prisma.plantLocation.findUnique({
+          where: { id: newLocation.id },
+          include: {
+            plant: true,
+            addedBy: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+            company: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            updates: {
+              orderBy: {
+                updateDate: "desc",
+              },
+              take: 1,
             },
           },
-          company: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
+        });
       });
 
       res.status(201).json(location);
@@ -321,7 +386,6 @@ const plantLocationController = {
           latitude: true,
           longitude: true,
           description: true,
-          imageUrl: true,
           createdAt: true,
           plant: {
             select: {
