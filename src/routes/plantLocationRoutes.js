@@ -34,4 +34,11 @@ router.put(
   plantLocationController.assignToCompany
 );
 
+// Get plants assigned to a company (only company users can access their own plants)
+router.get(
+  "/company/plants",
+  checkRole(["COMPANY"]),
+  plantLocationController.getCompanyPlants
+);
+
 export default router;

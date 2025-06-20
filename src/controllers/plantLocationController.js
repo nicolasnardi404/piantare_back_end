@@ -413,6 +413,80 @@ const plantLocationController = {
         .json({ error: error.message || "Failed to delete plant location" });
     }
   },
+
+  // Get plants assigned to a company
+  async getCompanyPlants(req, res) {
+    try {
+      const { userId } = req.user;
+
+      // Get the user's company
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { company: true },
+      });
+
+      if (!user.company) {
+        return res
+          .status(400)
+          .json({ error: "User not associated with any company" });
+      }
+
+      // Get all plants assigned to the company
+      const locations = await prisma.plantLocation.findMany({
+        where: {
+          companyId: user.company.id,
+        },
+        include: {
+          plant: {
+            select: {
+              id: true,
+              nomePopular: true,
+              nomeCientifico: true,
+              categoria: true,
+              altura: true,
+              origem: true,
+              especificacao: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          addedBy: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              bio: true,
+              imageUrl: true,
+            },
+          },
+          updates: {
+            select: {
+              id: true,
+              healthStatus: true,
+              notes: true,
+              imageUrl: true,
+              updateDate: true,
+            },
+            orderBy: {
+              updateDate: "desc",
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      res.json(locations);
+    } catch (error) {
+      console.error("Error in getCompanyPlants:", error);
+      res.status(500).json({ error: "Failed to fetch company plants" });
+    }
+  },
 };
 
 export default plantLocationController;
