@@ -8,6 +8,7 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "setup": "node src/scripts/setupStorage.js",
+    "postinstall": "prisma generate",
     "build": "prisma generate"
   },
   "dependencies": {
@@ -26,5 +27,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
