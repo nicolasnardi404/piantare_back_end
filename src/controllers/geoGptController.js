@@ -37,14 +37,12 @@ function processPlantData(plants) {
 
       // Add all measurements with their dates
       sortedUpdates.forEach((update) => {
-        if (update.measurements) {
-          acc[species].measurements.push({
-            date: update.updateDate,
-            height: update.measurements.height,
-            width: update.measurements.width,
-            health: update.healthStatus,
-          });
-        }
+        acc[species].measurements.push({
+          date: update.updateDate,
+          height: update.height,
+          width: update.width,
+          health: update.healthStatus,
+        });
       });
     }
 

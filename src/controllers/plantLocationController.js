@@ -69,7 +69,8 @@ const plantLocationController = {
               healthStatus: true,
               notes: true,
               imageUrl: true,
-              measurements: true,
+              height: true,
+              width: true,
               updateDate: true,
             },
             orderBy: {
@@ -95,15 +96,23 @@ const plantLocationController = {
         plantId,
         description,
         imageUrl,
-        measurements,
+        height,
+        width,
       } = req.body;
       const { userId } = req.user;
 
       // Validate input
-      if (!latitude || !longitude || !plantId || !imageUrl || !measurements) {
+      if (
+        !latitude ||
+        !longitude ||
+        !plantId ||
+        !imageUrl ||
+        !height ||
+        !width
+      ) {
         return res.status(400).json({
           error:
-            "Missing required fields. Please provide latitude, longitude, plantId, imageUrl, and initial measurements",
+            "Missing required fields. Please provide latitude, longitude, plantId, imageUrl, height and width",
         });
       }
 
@@ -135,7 +144,8 @@ const plantLocationController = {
           data: {
             plantId: newLocation.id,
             imageUrl,
-            measurements,
+            height: parseFloat(height),
+            width: parseFloat(width),
             notes: "Dia do Plantio",
             healthStatus: "HEALTHY",
           },
@@ -533,7 +543,8 @@ const plantLocationController = {
               healthStatus: true,
               notes: true,
               imageUrl: true,
-              measurements: true,
+              height: true,
+              width: true,
               updateDate: true,
             },
             orderBy: {

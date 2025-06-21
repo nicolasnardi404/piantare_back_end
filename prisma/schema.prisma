@@ -72,10 +72,11 @@ model PlantLocation {
 
 model PlantUpdate {
   id           Int          @id @default(autoincrement())
-  notes        String?
-  imageUrl     String       // URL to the update image in Supabase storage (required)
+  height       Float
+  width        Float
   healthStatus HealthStatus @default(HEALTHY)
-  measurements Json         // Store height, width, and additional measurements as JSON (required)
+  notes        String?
+  imageUrl     String?      // URL to the update image (optional)
   updateDate   DateTime     @default(now())
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

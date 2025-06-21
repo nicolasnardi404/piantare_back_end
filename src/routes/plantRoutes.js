@@ -21,6 +21,7 @@ const PLANT_CATEGORIES = [
 
 // Public routes
 router.get("/", plantController.getAllPlants);
+router.get("/list", plantController.getPlantsList); // New route for lightweight list
 router.get("/categories", async (req, res) => {
   try {
     res.json(PLANT_CATEGORIES);

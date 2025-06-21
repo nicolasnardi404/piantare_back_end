@@ -6,34 +6,32 @@ const prisma = new PrismaClient();
 const plantUpdateController = {
   async createUpdate(req, res) {
     try {
-      console.log("Received request body:", req.body);
-      const { plantLocationId, healthStatus, notes, imageUrl, measurements } =
+      const { plantLocationId, healthStatus, notes, imageUrl, height, width } =
         req.body;
-      const { userId } = req.user;
 
-      // Validate input
-      if (!plantLocationId || !healthStatus || !measurements) {
+      // Validate required fields
+      if (!plantLocationId || !healthStatus || !height || !width) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Check if the plant location exists and belongs to the user
+      // Check if plant location exists and user has permission
       const plantLocation = await prisma.plantLocation.findUnique({
-        where: { id: parseInt(plantLocationId) },
-        select: {
-          id: true,
-          userId: true,
-        },
+        where: { id: plantLocationId },
+        include: { addedBy: true },
       });
 
       if (!plantLocation) {
         return res.status(404).json({ error: "Plant location not found" });
       }
 
-      // Verify that the user owns this plant
-      if (plantLocation.userId !== userId) {
+      // Only allow updates by the farmer who added the plant or an admin
+      if (
+        req.user.role !== "ADMIN" &&
+        plantLocation.addedBy.id !== req.user.userId
+      ) {
         return res
           .status(403)
-          .json({ error: "You can only update your own plants" });
+          .json({ error: "Not authorized to update this plant" });
       }
 
       // Create the update
@@ -42,15 +40,14 @@ const plantUpdateController = {
           healthStatus,
           notes,
           imageUrl,
-          measurements,
-          updateDate: new Date(),
+          height: parseFloat(height),
+          width: parseFloat(width),
           plantId: parseInt(plantLocationId),
         },
         include: {
           plant: {
-            select: {
-              id: true,
-              commonName: true,
+            include: {
+              plant: true,
             },
           },
         },

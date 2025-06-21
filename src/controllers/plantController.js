@@ -2,6 +2,28 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 const plantController = {
+  // Get lightweight list of all plants (no pagination)
+  async getPlantsList(req, res) {
+    try {
+      const plants = await prisma.plant.findMany({
+        select: {
+          id: true,
+          commonName: true,
+          scientificName: true,
+          category: true,
+        },
+        orderBy: {
+          commonName: "asc",
+        },
+      });
+
+      res.json(plants);
+    } catch (error) {
+      console.error("Error in getPlantsList:", error);
+      res.status(500).json({ error: "Failed to fetch plants list" });
+    }
+  },
+
   // Get all plants in the catalog
   async getAllPlants(req, res) {
     try {
