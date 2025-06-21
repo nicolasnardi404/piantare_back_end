@@ -8,15 +8,15 @@ const prisma = new PrismaClient();
 
 // Define plant categories
 const PLANT_CATEGORIES = [
-  "ARVORES",
-  "ARVORES_FRUTIFERAS",
-  "CAPINS",
-  "FOLHAGENS_ALTAS",
-  "ARBUSTOS",
-  "TREPADEIRAS",
-  "AROMATICAS_E_COMESTIVEIS",
-  "PLANTAS_DE_FORRACAO",
-  "PLANTAS_AQUATICAS_OU_PALUSTRES",
+  "TREES",
+  "FRUIT_TREES",
+  "GRASSES",
+  "TALL_FOLIAGE",
+  "SHRUBS",
+  "CLIMBING_PLANTS",
+  "AROMATIC_AND_EDIBLE",
+  "GROUND_COVER",
+  "AQUATIC_OR_MARSH",
 ];
 
 // Public routes
