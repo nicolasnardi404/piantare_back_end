@@ -8,20 +8,47 @@ const __dirname = path.dirname(__filename);
 
 const prisma = new PrismaClient();
 
+function parseCSVLine(line) {
+  const result = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
 async function importTrees() {
   try {
     const fileContent = fs.readFileSync(
       path.join(__dirname, "..", "vegetação  - VEGETAÇÃO.csv"),
       "utf-8"
     );
-    const lines = fileContent.split("\n");
+
+    // Split by newlines but handle potential carriage returns
+    const lines = fileContent.split(/\r?\n/);
 
     let currentCategory = "";
     const trees = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
-      const columns = line.split(",");
 
       // Skip empty lines and header
       if (
@@ -34,15 +61,15 @@ async function importTrees() {
 
       // Check for category headers
       if (line.includes("ÁRVORES FRUTÍFERAS")) {
-        currentCategory = PlantCategory.ARVORES_FRUTIFERAS;
+        currentCategory = PlantCategory.FRUIT_TREES;
         continue;
-      } else if (line.includes("ÁRVORES")) {
-        currentCategory = PlantCategory.ARVORES;
+      } else if (line.includes("ÁRVORES") && !line.includes("FRUTÍFERAS")) {
+        currentCategory = PlantCategory.TREES;
         continue;
       }
 
       // Skip if we're not in a tree category
-      if (!currentCategory || !columns[0]) {
+      if (!currentCategory) {
         continue;
       }
 
@@ -59,18 +86,25 @@ async function importTrees() {
         break;
       }
 
-      const [nomePopular, nomeCientifico, origem, altura, especificacao] =
-        columns;
+      const columns = parseCSVLine(line);
+
+      if (!columns[0]) continue; // Skip if first column is empty
+
+      const commonName = columns[0] || null;
+      const scientificName = columns[1] || null;
+      const origin = columns[2] || null;
+      const height = columns[3] || null;
+      const specification = columns[4] || null;
 
       // Only add if we have the required fields
-      if (nomePopular && nomeCientifico) {
+      if (commonName && scientificName) {
         trees.push({
-          nomePopular: nomePopular.trim(),
-          nomeCientifico: nomeCientifico.trim(),
-          origem: origem?.trim() || null,
-          altura: altura?.trim() || null,
-          especificacao: especificacao?.trim() || null,
-          categoria: currentCategory,
+          commonName,
+          scientificName,
+          origin,
+          height,
+          specification,
+          category: currentCategory,
         });
       }
     }
@@ -79,8 +113,8 @@ async function importTrees() {
     await prisma.plant.deleteMany({
       where: {
         OR: [
-          { categoria: PlantCategory.ARVORES },
-          { categoria: PlantCategory.ARVORES_FRUTIFERAS },
+          { category: PlantCategory.TREES },
+          { category: PlantCategory.FRUIT_TREES },
         ],
       },
     });
@@ -91,6 +125,14 @@ async function importTrees() {
     });
 
     console.log(`Successfully imported ${result.count} trees`);
+
+    // Log some sample data to verify specifications are complete
+    console.log("\nSample imported trees (to verify specifications):");
+    const sampleTrees = await prisma.plant.findMany({
+      take: 5,
+      orderBy: { commonName: "asc" },
+    });
+    console.log(JSON.stringify(sampleTrees, null, 2));
   } catch (error) {
     console.error("Error importing trees:", error);
   } finally {

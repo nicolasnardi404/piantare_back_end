@@ -100,30 +100,30 @@ enum HealthStatus {
 }
 
 enum PlantCategory {
-  ARVORES
-  ARVORES_FRUTIFERAS
-  CAPINS
-  FOLHAGENS_ALTAS
-  ARBUSTOS
-  TREPADEIRAS
-  AROMATICAS_E_COMESTIVEIS
-  PLANTAS_DE_FORRACAO
-  PLANTAS_AQUATICAS_OU_PALUSTRES
+  TREES               // was ARVORES
+  FRUIT_TREES         // was ARVORES_FRUTIFERAS
+  GRASSES            // was CAPINS
+  TALL_FOLIAGE       // was FOLHAGENS_ALTAS
+  SHRUBS             // was ARBUSTOS
+  CLIMBING_PLANTS    // was TREPADEIRAS
+  AROMATIC_AND_EDIBLE // was AROMATICAS_E_COMESTIVEIS
+  GROUND_COVER       // was PLANTAS_DE_FORRACAO
+  AQUATIC_OR_MARSH   // was PLANTAS_AQUATICAS_OU_PALUSTRES
 }
 
 model Plant {
-  id             Int            @id @default(autoincrement())
-  nomePopular    String
-  nomeCientifico String
-  origem         String?
-  altura         String?
-  especificacao  String?
-  categoria      PlantCategory
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id              Int            @id @default(autoincrement())
+  commonName      String         // was nomePopular
+  scientificName  String         // was nomeCientifico
+  origin          String?        // was origem
+  height          String?        // was altura
+  specification   String?        // was especificacao
+  category        PlantCategory  // was categoria
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   
   // Relationships
-  locations      PlantLocation[]
+  locations       PlantLocation[]
 
   @@map("plants")
 }

@@ -5,18 +5,18 @@ const plantController = {
   // Get all plants in the catalog
   async getAllPlants(req, res) {
     try {
-      const { page = 1, limit = 10, search = "", categoria = "" } = req.query;
+      const { page = 1, limit = 10, search = "", category = "" } = req.query;
 
       // Build the where clause for filtering
       const where = {};
       if (search) {
         where.OR = [
-          { nomePopular: { contains: search, mode: "insensitive" } },
-          { nomeCientifico: { contains: search, mode: "insensitive" } },
+          { commonName: { contains: search, mode: "insensitive" } },
+          { scientificName: { contains: search, mode: "insensitive" } },
         ];
       }
-      if (categoria) {
-        where.categoria = categoria;
+      if (category) {
+        where.category = category;
       }
 
       // Get total count
@@ -26,7 +26,7 @@ const plantController = {
       const plants = await prisma.plant.findMany({
         where,
         orderBy: {
-          nomePopular: "asc",
+          commonName: "asc",
         },
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit),
@@ -81,27 +81,27 @@ const plantController = {
   async addPlant(req, res) {
     try {
       const {
-        nomePopular,
-        nomeCientifico,
-        origem,
-        altura,
-        especificacao,
-        categoria,
+        commonName,
+        scientificName,
+        origin,
+        height,
+        specification,
+        category,
       } = req.body;
 
       // Validate required fields
-      if (!nomePopular || !nomeCientifico || !categoria) {
+      if (!commonName || !scientificName || !category) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
       const plant = await prisma.plant.create({
         data: {
-          nomePopular,
-          nomeCientifico,
-          origem,
-          altura,
-          especificacao,
-          categoria,
+          commonName,
+          scientificName,
+          origin,
+          height,
+          specification,
+          category,
         },
       });
 
@@ -117,23 +117,23 @@ const plantController = {
     try {
       const { id } = req.params;
       const {
-        nomePopular,
-        nomeCientifico,
-        origem,
-        altura,
-        especificacao,
-        categoria,
+        commonName,
+        scientificName,
+        origin,
+        height,
+        specification,
+        category,
       } = req.body;
 
       const plant = await prisma.plant.update({
         where: { id: parseInt(id) },
         data: {
-          nomePopular,
-          nomeCientifico,
-          origem,
-          altura,
-          especificacao,
-          categoria,
+          commonName,
+          scientificName,
+          origin,
+          height,
+          specification,
+          category,
         },
       });
 

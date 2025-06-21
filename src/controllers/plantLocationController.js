@@ -40,12 +40,12 @@ const plantLocationController = {
           plant: {
             select: {
               id: true,
-              nomePopular: true,
-              nomeCientifico: true,
-              categoria: true,
-              altura: true,
-              origem: true,
-              especificacao: true,
+              commonName: true,
+              scientificName: true,
+              category: true,
+              height: true,
+              origin: true,
+              specification: true,
             },
           },
           company: {
@@ -136,7 +136,7 @@ const plantLocationController = {
             plantId: newLocation.id,
             imageUrl,
             measurements,
-            notes: "Initial plant registration",
+            notes: "Dia do Plantio",
             healthStatus: "HEALTHY",
           },
         });
@@ -390,12 +390,12 @@ const plantLocationController = {
           plant: {
             select: {
               id: true,
-              nomePopular: true,
-              nomeCientifico: true,
-              categoria: true,
-              altura: true,
-              origem: true,
-              especificacao: true,
+              commonName: true,
+              scientificName: true,
+              category: true,
+              height: true,
+              origin: true,
+              specification: true,
             },
           },
           addedBy: {
@@ -504,12 +504,12 @@ const plantLocationController = {
           plant: {
             select: {
               id: true,
-              nomePopular: true,
-              nomeCientifico: true,
-              categoria: true,
-              altura: true,
-              origem: true,
-              especificacao: true,
+              commonName: true,
+              scientificName: true,
+              category: true,
+              height: true,
+              origin: true,
+              specification: true,
             },
           },
           company: {
@@ -533,6 +533,7 @@ const plantLocationController = {
               healthStatus: true,
               notes: true,
               imageUrl: true,
+              measurements: true,
               updateDate: true,
             },
             orderBy: {

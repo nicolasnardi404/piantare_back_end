@@ -5,26 +5,48 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Helper function to process and aggregate plant data
 function processPlantData(plants) {
-  // Group plants by species (nomeCientifico)
+  // Group plants by species (scientificName)
   const speciesGroups = plants.reduce((acc, plant) => {
-    const species = plant.plant?.nomeCientifico;
+    const species = plant.plant?.scientificName;
     if (!species) return acc;
 
     if (!acc[species]) {
       acc[species] = {
-        nomeCientifico: species,
-        nomePopular: plant.plant?.nomePopular,
-        categoria: plant.plant?.categoria,
-        quantidade: 0,
-        localizacoes: new Set(), // Using Set to avoid duplicates
+        scientificName: species,
+        commonName: plant.plant?.commonName,
+        category: plant.plant?.category,
+        expectedHeight: plant.plant?.height,
+        quantity: 0,
+        locations: new Set(), // Using Set to avoid duplicates
+        measurements: [], // Array to store all measurements
         total: 0,
       };
     }
 
-    acc[species].quantidade += 1;
-    acc[species].localizacoes.add(
+    acc[species].quantity += 1;
+    acc[species].locations.add(
       `${plant.latitude.toFixed(3)},${plant.longitude.toFixed(3)}`
     );
+
+    // Add measurements if available
+    if (plant.updates && plant.updates.length > 0) {
+      // Sort updates by date to get the latest first
+      const sortedUpdates = [...plant.updates].sort(
+        (a, b) => new Date(b.updateDate) - new Date(a.updateDate)
+      );
+
+      // Add all measurements with their dates
+      sortedUpdates.forEach((update) => {
+        if (update.measurements) {
+          acc[species].measurements.push({
+            date: update.updateDate,
+            height: update.measurements.height,
+            width: update.measurements.width,
+            health: update.healthStatus,
+          });
+        }
+      });
+    }
 
     return acc;
   }, {});
@@ -32,23 +54,41 @@ function processPlantData(plants) {
   // Convert the grouped data to array
   const processedData = Object.values(speciesGroups).map((group) => ({
     ...group,
-    localizacoes: Array.from(group.localizacoes),
+    locations: Array.from(group.locations),
+    // Calculate growth statistics if measurements are available
+    growth:
+      group.measurements.length > 1
+        ? {
+            initialHeight:
+              group.measurements[group.measurements.length - 1].height,
+            currentHeight: group.measurements[0].height,
+            initialWidth:
+              group.measurements[group.measurements.length - 1].width,
+            currentWidth: group.measurements[0].width,
+            monitoringPeriod: `${new Date(
+              group.measurements[group.measurements.length - 1].date
+            ).toLocaleDateString()} até ${new Date(
+              group.measurements[0].date
+            ).toLocaleDateString()}`,
+          }
+        : null,
   }));
 
   // Calculate summary statistics
   const summary = {
-    totalEspecies: processedData.length,
-    totalPlantas: processedData.reduce(
-      (sum, group) => sum + group.quantidade,
+    totalSpecies: processedData.length,
+    totalPlants: processedData.reduce((sum, group) => sum + group.quantity, 0),
+    uniqueCategories: [
+      ...new Set(processedData.map((group) => group.category)),
+    ].filter(Boolean),
+    regions: processedData.flatMap((group) => group.locations).length,
+    monitoredPlants: processedData.reduce(
+      (sum, group) => sum + (group.measurements.length > 0 ? 1 : 0),
       0
     ),
-    categoriasUnicas: [
-      ...new Set(processedData.map((group) => group.categoria)),
-    ].filter(Boolean),
-    regioes: processedData.flatMap((group) => group.localizacoes).length,
   };
 
-  return { especies: processedData, resumo: summary };
+  return { species: processedData, summary };
 }
 
 const geoGptController = {
@@ -93,16 +133,31 @@ IMPORTANTE: Use EXATAMENTE os marcadores especificados, em maiúsculas e entre c
       const userPrompt = `Elabore uma análise técnica sobre o seguinte projeto de plantio, usando os marcadores [COMPOSIÇÃO], [DISTRIBUIÇÃO] e [CONTEXTO] para organizar o texto.
 
 Detalhamento das Espécies:
-${processedData.especies
+${processedData.species
   .map(
     (esp) =>
-      `• ${esp.nomePopular} (${esp.nomeCientifico})
-   Categoria: ${esp.categoria || "Não classificada"}
-   Distribuição: ${esp.localizacoes.length} pontos de plantio`
+      `• ${esp.commonName} (${esp.scientificName})
+   Category: ${esp.category || "Not classified"}
+   Distribution: ${esp.locations.length} planting points
+   Expected Height: ${esp.expectedHeight || "Not informed"}
+   ${
+     esp.growth
+       ? `Observed Growth:
+   - Height: ${esp.growth.initialHeight}m → ${esp.growth.currentHeight}m
+   - Width: ${esp.growth.initialWidth}m → ${esp.growth.currentWidth}m
+   - Period: ${esp.growth.monitoringPeriod}`
+       : "No growth data"
+   }`
   )
-  .join("\n")}
+  .join("\n\n")}
 
-Forneça uma análise técnica focando nos aspectos qualitativos do projeto, mantendo um texto coeso e profissional.`;
+General Summary:
+• Total Species: ${processedData.summary.totalSpecies}
+• Total Plants: ${processedData.summary.totalPlants}
+• Monitored Plants: ${processedData.summary.monitoredPlants}
+• Planting Points: ${processedData.summary.regions}
+
+Forneça uma análise técnica focando nos aspectos qualitativos do projeto, incluindo padrões de crescimento e desenvolvimento das plantas quando houver dados disponíveis. Mantenha um texto coeso e profissional.`;
 
       console.log("Verificando configuração da API...", {
         hasApiKey: !!OPENAI_API_KEY,

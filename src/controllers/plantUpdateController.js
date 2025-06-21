@@ -50,11 +50,7 @@ const plantUpdateController = {
           plant: {
             select: {
               id: true,
-              plant: {
-                select: {
-                  nomePopular: true,
-                },
-              },
+              commonName: true,
             },
           },
         },
