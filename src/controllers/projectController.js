@@ -7,8 +7,8 @@ const projectController = {
     try {
       const { userId, role } = req.user;
 
-      let whereClause = {};
-
+      // Different query based on user role
+      let projects;
       if (role === "FARMER") {
         const farmer = await prisma.farmer.findUnique({
           where: { userId },
@@ -18,130 +18,170 @@ const projectController = {
           return res.status(400).json({ error: "User is not a farmer" });
         }
 
-        whereClause.farmerId = farmer.id;
+        projects = await prisma.project.findMany({
+          where: {
+            farmerId: farmer.id,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            areaCoordinates: true,
+            _count: {
+              select: {
+                plantedPlants: true,
+              },
+            },
+          },
+          orderBy: {
+            startDate: "desc",
+          },
+        });
       } else if (role === "COMPANY") {
         const company = await prisma.company.findUnique({
           where: { userId },
         });
 
         if (!company) {
-          return res
-            .status(400)
-            .json({ error: "User is not associated with a company" });
+          return res.status(400).json({ error: "User is not a company" });
         }
 
-        whereClause.companyId = company.id;
+        projects = await prisma.project.findMany({
+          where: {
+            companyId: company.id,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            areaCoordinates: true,
+            _count: {
+              select: {
+                plantedPlants: true,
+              },
+            },
+            farmer: {
+              select: {
+                user: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            startDate: "desc",
+          },
+        });
       }
-      // Admin can see all projects (no where clause needed)
-
-      const projects = await prisma.project.findMany({
-        where: whereClause,
-        include: {
-          farmer: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-          company: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              plantedPlants: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
 
       res.json(projects);
     } catch (error) {
-      console.error("Error in getProjects:", error);
-      res.status(500).json({ error: "Failed to fetch projects" });
+      console.error("Error fetching projects:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 
   // Get specific project details
   async getProjectById(req, res) {
     try {
+      const { id } = req.params;
       const { userId, role } = req.user;
-      const projectId = parseInt(req.params.id);
 
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        include: {
-          company: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
+      let project;
+      if (role === "FARMER") {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
+        });
+
+        if (!farmer) {
+          return res.status(400).json({ error: "User is not a farmer" });
+        }
+
+        project = await prisma.project.findFirst({
+          where: {
+            id: parseInt(id),
+            farmerId: farmer.id,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            areaCoordinates: true,
+            _count: {
+              select: {
+                plantedPlants: true,
+              },
+            },
+            company: {
+              select: {
+                user: {
+                  select: {
+                    name: true,
+                  },
                 },
               },
             },
           },
-          farmer: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
+        });
+      } else if (role === "COMPANY") {
+        const company = await prisma.company.findUnique({
+          where: { userId },
+        });
+
+        if (!company) {
+          return res.status(400).json({ error: "User is not a company" });
+        }
+
+        project = await prisma.project.findFirst({
+          where: {
+            id: parseInt(id),
+            companyId: company.id,
+          },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            areaCoordinates: true,
+            _count: {
+              select: {
+                plantedPlants: true,
+              },
+            },
+            farmer: {
+              select: {
+                user: {
+                  select: {
+                    name: true,
+                  },
                 },
               },
             },
           },
-          plantedPlants: {
-            include: {
-              species: true,
-              updates: {
-                orderBy: {
-                  createdAt: "desc",
-                },
-              },
-            },
-          },
-          _count: {
-            select: {
-              plantedPlants: true,
-            },
-          },
-        },
-      });
+        });
+      }
 
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Check if user has access to this project
-      const hasAccess =
-        (role === "FARMER" && project.farmer?.user?.id === userId) ||
-        (role === "COMPANY" && project.company?.user?.id === userId) ||
-        role === "ADMIN";
-
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
       res.json(project);
     } catch (error) {
-      console.error("Error in getProjectById:", error);
-      res.status(500).json({ error: "Failed to fetch project details" });
+      console.error("Error fetching project:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 
