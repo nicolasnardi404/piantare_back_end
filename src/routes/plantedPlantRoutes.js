@@ -57,6 +57,13 @@ router.get(
   plantedPlantController.getCompanyPlants
 );
 
+// Get company's plants with detailed information (only for company users)
+router.get(
+  "/company/plants-detailed",
+  checkRole(["COMPANY"]),
+  plantedPlantController.getCompanyPlantsDetailed
+);
+
 // Get detailed plant information
 router.get("/details/:id", plantedPlantController.getPlantDetails);
 

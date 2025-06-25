@@ -252,6 +252,73 @@ const plantedPlantController = {
           },
           project: {
             select: {
+              name: true,
+              status: true,
+            },
+          },
+          updates: {
+            select: {
+              healthStatus: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      });
+
+      res.json(plants);
+    } catch (error) {
+      console.error("Error in getCompanyPlants:", error);
+      res.status(500).json({ error: "Failed to fetch company's plants" });
+    }
+  },
+
+  // Get company's plants with detailed information
+  async getCompanyPlantsDetailed(req, res) {
+    try {
+      const { userId } = req.user;
+
+      const company = await prisma.company.findUnique({
+        where: { userId },
+      });
+
+      if (!company) {
+        return res
+          .status(400)
+          .json({ error: "User not associated with any company" });
+      }
+
+      const plants = await prisma.plantedPlant.findMany({
+        where: {
+          companyId: company.id,
+        },
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          description: true,
+          plantedAt: true,
+          createdAt: true,
+          species: {
+            select: {
+              commonName: true,
+              scientificName: true,
+              category: true,
+              origin: true,
+              height: true,
+              specification: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              status: true,
+              areaCoordinates: true,
               farmer: {
                 select: {
                   user: {
@@ -266,7 +333,10 @@ const plantedPlantController = {
           },
           updates: {
             select: {
+              id: true,
               healthStatus: true,
+              notes: true,
+              imageUrl: true,
               height: true,
               diameter: true,
               createdAt: true,
@@ -280,8 +350,10 @@ const plantedPlantController = {
 
       res.json(plants);
     } catch (error) {
-      console.error("Error in getCompanyPlants:", error);
-      res.status(500).json({ error: "Failed to fetch company's plants" });
+      console.error("Error in getCompanyPlantsDetailed:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to fetch detailed company's plants" });
     }
   },
 
