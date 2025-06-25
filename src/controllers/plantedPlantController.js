@@ -767,6 +767,107 @@ const plantedPlantController = {
         .json({ error: "Failed to fetch farmer's plants table data" });
     }
   },
+
+  // Get complete dashboard data in a single query
+  async getFarmerDashboardComplete(req, res) {
+    try {
+      const { userId } = req.user;
+
+      // Get farmer with all related data
+      const farmer = await prisma.farmer.findUnique({
+        where: { userId },
+        include: {
+          projects: {
+            orderBy: {
+              startDate: "desc",
+            },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              areaCoordinates: true,
+              plantedPlants: {
+                select: {
+                  id: true,
+                  latitude: true,
+                  longitude: true,
+                  projectId: true,
+                  species: {
+                    select: {
+                      commonName: true,
+                      scientificName: true,
+                    },
+                  },
+                  updates: {
+                    select: {
+                      healthStatus: true,
+                      createdAt: true,
+                    },
+                    orderBy: {
+                      createdAt: "desc",
+                    },
+                    take: 1,
+                  },
+                },
+              },
+              _count: {
+                select: {
+                  plantedPlants: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!farmer) {
+        return res.status(400).json({ error: "User is not a farmer" });
+      }
+
+      // Calculate stats across all projects
+      const stats = {
+        totalPlants: 0,
+        healthyPlants: 0,
+        needsAttention: 0,
+        sickPlants: 0,
+      };
+
+      farmer.projects.forEach((project) => {
+        project.plantedPlants.forEach((plant) => {
+          stats.totalPlants++;
+          const lastUpdate = plant.updates[0];
+          if (!lastUpdate) {
+            stats.healthyPlants++;
+          } else {
+            switch (lastUpdate.healthStatus) {
+              case "HEALTHY":
+                stats.healthyPlants++;
+                break;
+              case "NEEDS_ATTENTION":
+                stats.needsAttention++;
+                break;
+              case "SICK":
+                stats.sickPlants++;
+                break;
+              default:
+                stats.healthyPlants++;
+            }
+          }
+        });
+      });
+
+      res.json({
+        stats,
+        projects: farmer.projects,
+      });
+    } catch (error) {
+      console.error("Error in getFarmerDashboardComplete:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  },
 };
 
 export default plantedPlantController;

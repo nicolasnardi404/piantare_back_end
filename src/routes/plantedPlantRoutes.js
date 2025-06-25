@@ -12,6 +12,12 @@ router.use(authenticateToken);
 
 // Farmer dashboard optimized routes
 router.get(
+  "/farmer/dashboard-complete",
+  checkRole(["FARMER"]),
+  plantedPlantController.getFarmerDashboardComplete
+);
+
+router.get(
   "/farmer/dashboard",
   checkRole(["FARMER"]),
   plantedPlantController.getFarmerDashboardData
