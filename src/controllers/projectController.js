@@ -84,18 +84,11 @@ const projectController = {
       const project = await prisma.project.findUnique({
         where: { id: projectId },
         include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
-          },
           company: {
-            select: {
-              id: true,
+            include: {
               user: {
                 select: {
+                  id: true,
                   name: true,
                   email: true,
                 },
@@ -103,23 +96,30 @@ const projectController = {
             },
           },
           farmer: {
-            select: {
-              id: true,
+            include: {
               user: {
                 select: {
+                  id: true,
                   name: true,
                   email: true,
                 },
               },
             },
           },
-          locations: {
+          plantedPlants: {
             include: {
-              plant: true,
+              species: true,
+              updates: {
+                orderBy: {
+                  createdAt: "desc",
+                },
+              },
             },
           },
           _count: {
-            select: { locations: true },
+            select: {
+              plantedPlants: true,
+            },
           },
         },
       });
@@ -130,9 +130,8 @@ const projectController = {
 
       // Check if user has access to this project
       const hasAccess =
-        project.createdBy.id === userId ||
-        project.company?.user?.id === userId ||
-        project.farmer?.user?.id === userId ||
+        (role === "FARMER" && project.farmer?.user?.id === userId) ||
+        (role === "COMPANY" && project.company?.user?.id === userId) ||
         role === "ADMIN";
 
       if (!hasAccess) {
