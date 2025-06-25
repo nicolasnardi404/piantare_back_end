@@ -1,8 +1,8 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import plantLocationRoutes from "./routes/plantLocationRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import plantedPlantRoutes from "./routes/plantedPlantRoutes.js";
 import companyRoutes from "./routes/companyRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import uploadRoutes from "./routes/uploadRoutes.js";
@@ -41,7 +41,7 @@ app.options("*", cors(corsOptions));
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/plant-locations", plantLocationRoutes);
+app.use("/api/planted-plants", plantedPlantRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/plant-updates", plantUpdateRoutes);
