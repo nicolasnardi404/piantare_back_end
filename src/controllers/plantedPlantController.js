@@ -293,6 +293,7 @@ const plantedPlantController = {
               name: true,
               farmer: {
                 select: {
+                  id: true,
                   user: {
                     select: {
                       id: true,

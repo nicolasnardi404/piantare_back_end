@@ -6,28 +6,44 @@ const prisma = new PrismaClient();
 const plantUpdateController = {
   async createUpdate(req, res) {
     try {
-      const { plantLocationId, healthStatus, notes, imageUrl, height, width } =
-        req.body;
+      const {
+        plantedPlantId,
+        healthStatus,
+        notes,
+        imageUrl,
+        height,
+        diameter,
+      } = req.body;
 
       // Validate required fields
-      if (!plantLocationId || !healthStatus || !height || !width) {
+      if (!plantedPlantId || !healthStatus || !height || !diameter) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Check if plant location exists and user has permission
-      const plantLocation = await prisma.plantLocation.findUnique({
-        where: { id: plantLocationId },
-        include: { addedBy: true },
+      // Check if planted plant exists and user has permission
+      const plantedPlant = await prisma.plantedPlant.findUnique({
+        where: { id: plantedPlantId },
+        include: {
+          project: {
+            include: {
+              farmer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          },
+        },
       });
 
-      if (!plantLocation) {
-        return res.status(404).json({ error: "Plant location not found" });
+      if (!plantedPlant) {
+        return res.status(404).json({ error: "Plant not found" });
       }
 
-      // Only allow updates by the farmer who added the plant or an admin
+      // Only allow updates by the farmer who owns the project or an admin
       if (
         req.user.role !== "ADMIN" &&
-        plantLocation.addedBy.id !== req.user.userId
+        plantedPlant.project.farmer.user.id !== req.user.userId
       ) {
         return res
           .status(403)
@@ -41,13 +57,13 @@ const plantUpdateController = {
           notes,
           imageUrl,
           height: parseFloat(height),
-          width: parseFloat(width),
-          plantId: parseInt(plantLocationId),
+          diameter: parseFloat(diameter),
+          plantedPlantId: parseInt(plantedPlantId),
         },
         include: {
-          plant: {
+          plantedPlant: {
             include: {
-              plant: true,
+              species: true,
             },
           },
         },
@@ -65,27 +81,34 @@ const plantUpdateController = {
 
   async getUpdatesByPlant(req, res) {
     try {
-      const { plantLocationId } = req.params;
+      const { plantedPlantId } = req.params;
       const { userId } = req.user;
 
-      // Check if the plant location exists and belongs to the user
-      const plantLocation = await prisma.plantLocation.findUnique({
-        where: { id: parseInt(plantLocationId) },
-        select: {
-          id: true,
-          userId: true,
+      // Check if the planted plant exists and belongs to the user's project
+      const plantedPlant = await prisma.plantedPlant.findUnique({
+        where: { id: parseInt(plantedPlantId) },
+        include: {
+          project: {
+            include: {
+              farmer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
+          },
         },
       });
 
-      if (!plantLocation) {
-        return res.status(404).json({ error: "Plant location not found" });
+      if (!plantedPlant) {
+        return res.status(404).json({ error: "Plant not found" });
       }
 
       // Get all updates for this plant
       const updates = await prisma.plantUpdate.findMany({
-        where: { plantLocationId: parseInt(plantLocationId) },
+        where: { plantedPlantId: parseInt(plantedPlantId) },
         orderBy: {
-          updateDate: "desc",
+          createdAt: "desc",
         },
       });
 
@@ -101,13 +124,21 @@ const plantUpdateController = {
       const { id } = req.params;
       const { userId } = req.user;
 
-      // Check if the update exists and belongs to a plant owned by the user
+      // Check if the update exists and belongs to a plant in user's project
       const update = await prisma.plantUpdate.findUnique({
         where: { id: parseInt(id) },
         include: {
-          plantLocation: {
-            select: {
-              userId: true,
+          plantedPlant: {
+            include: {
+              project: {
+                include: {
+                  farmer: {
+                    include: {
+                      user: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -117,11 +148,11 @@ const plantUpdateController = {
         return res.status(404).json({ error: "Update not found" });
       }
 
-      // Verify that the user owns the plant this update belongs to
-      if (update.plantLocation.userId !== userId) {
-        return res
-          .status(403)
-          .json({ error: "You can only delete updates for your own plants" });
+      // Verify that the user owns the project this plant belongs to
+      if (update.plantedPlant.project.farmer.user.id !== userId) {
+        return res.status(403).json({
+          error: "You can only delete updates for plants in your projects",
+        });
       }
 
       // Delete the update
