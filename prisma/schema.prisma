@@ -70,6 +70,7 @@ model Project {
   startDate       DateTime @default(now())
   endDate         DateTime?
   areaCoordinates Json?    // Array of [lat, lng] pairs forming a polygon
+  mapImageUrl     String?  // URL to the stored satellite map image
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

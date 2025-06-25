@@ -1,4 +1,6 @@
 import { PrismaClient } from "@prisma/client";
+import uploadService from "../services/uploadService.js";
+
 const prisma = new PrismaClient();
 
 const projectController = {
@@ -189,8 +191,15 @@ const projectController = {
   async createProject(req, res) {
     try {
       const { userId } = req.user;
-      const { name, description, status, startDate, endDate, areaCoordinates } =
-        req.body;
+      const {
+        name,
+        description,
+        status,
+        startDate,
+        endDate,
+        areaCoordinates,
+        mapImageUrl,
+      } = req.body;
 
       // First get the farmer's ID
       const farmer = await prisma.farmer.findUnique({
@@ -201,6 +210,8 @@ const projectController = {
         return res.status(400).json({ error: "User is not a farmer" });
       }
 
+      let finalMapImageUrl = mapImageUrl;
+
       // Create the project
       const project = await prisma.project.create({
         data: {
@@ -210,11 +221,15 @@ const projectController = {
           startDate: new Date(startDate),
           endDate: endDate ? new Date(endDate) : null,
           areaCoordinates: areaCoordinates,
+          mapImageUrl: finalMapImageUrl,
           farmerId: farmer.id,
         },
         include: {
           farmer: {
-            include: {
+            select: {
+              id: true,
+              farmSize: true,
+              location: true,
               user: {
                 select: {
                   name: true,
@@ -245,34 +260,56 @@ const projectController = {
     try {
       const { id } = req.params;
       const { userId, role } = req.user;
-      const { name, description, status, startDate, endDate, areaCoordinates } =
-        req.body;
+      const {
+        name,
+        description,
+        status,
+        startDate,
+        endDate,
+        areaCoordinates,
+        mapImageUrl,
+      } = req.body;
 
-      // Check if project exists and get farmer info
-      const existingProject = await prisma.project.findUnique({
-        where: { id: parseInt(id) },
-        include: {
-          farmer: true,
-        },
-      });
-
-      if (!existingProject) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      // Check authorization
+      // Verify ownership based on role
+      let project;
       if (role === "FARMER") {
         const farmer = await prisma.farmer.findUnique({
           where: { userId },
         });
 
-        if (!farmer || existingProject.farmerId !== farmer.id) {
-          return res.status(403).json({ error: "Access denied" });
+        if (!farmer) {
+          return res.status(400).json({ error: "User is not a farmer" });
         }
+
+        project = await prisma.project.findFirst({
+          where: {
+            id: parseInt(id),
+            farmerId: farmer.id,
+          },
+        });
+      } else if (role === "COMPANY") {
+        const company = await prisma.company.findUnique({
+          where: { userId },
+        });
+
+        if (!company) {
+          return res.status(400).json({ error: "User is not a company" });
+        }
+
+        project = await prisma.project.findFirst({
+          where: {
+            id: parseInt(id),
+            companyId: company.id,
+          },
+        });
+      }
+
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
       }
 
       // Update the project
-      const project = await prisma.project.update({
+      const updatedProject = await prisma.project.update({
         where: { id: parseInt(id) },
         data: {
           name,
@@ -280,11 +317,15 @@ const projectController = {
           status,
           startDate: startDate ? new Date(startDate) : undefined,
           endDate: endDate ? new Date(endDate) : null,
-          areaCoordinates: areaCoordinates,
+          areaCoordinates,
+          mapImageUrl,
         },
         include: {
           farmer: {
-            include: {
+            select: {
+              id: true,
+              farmSize: true,
+              location: true,
               user: {
                 select: {
                   name: true,
@@ -301,12 +342,10 @@ const projectController = {
         },
       });
 
-      res.json(project);
+      res.json(updatedProject);
     } catch (error) {
-      console.error("Error in updateProject:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to update project" });
+      console.error("Error updating project:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   },
 

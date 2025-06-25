@@ -789,6 +789,7 @@ const plantedPlantController = {
               startDate: true,
               endDate: true,
               areaCoordinates: true,
+              mapImageUrl: true,
               plantedPlants: {
                 select: {
                   id: true,

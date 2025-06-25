@@ -15,7 +15,7 @@ const supabase = createClient(
 );
 
 class UploadService {
-  async uploadFile(file) {
+  async uploadFile(file, bucket = "plants") {
     try {
       // Log the file details
       console.log("File details:", {
@@ -23,6 +23,7 @@ class UploadService {
         mimetype: file.mimetype,
         size: file.size,
         buffer: file.buffer ? "Present" : "Missing",
+        bucket: bucket,
       });
 
       // Generate a unique filename
@@ -33,7 +34,7 @@ class UploadService {
 
       // Upload file to Supabase Storage
       const { data, error } = await supabase.storage
-        .from("plants")
+        .from(bucket)
         .upload(fileName, file.buffer, {
           contentType: file.mimetype,
           cacheControl: "3600",
@@ -49,7 +50,7 @@ class UploadService {
       // Get the public URL
       const {
         data: { publicUrl },
-      } = supabase.storage.from("plants").getPublicUrl(fileName);
+      } = supabase.storage.from(bucket).getPublicUrl(fileName);
 
       return {
         success: true,
@@ -60,6 +61,10 @@ class UploadService {
       console.error("Upload error:", error);
       throw new Error(`Upload failed: ${error.message}`);
     }
+  }
+
+  async uploadProjectMap(file) {
+    return this.uploadFile(file, "project-maps");
   }
 
   async getFileUrl(fileName, userId) {
@@ -94,7 +99,7 @@ class UploadService {
 
 export default new UploadService();
 
-export const uploadFile = async (file) => {
+export const uploadFile = async (file, bucket = "plants") => {
   if (!file) {
     throw new Error("No file provided");
   }
@@ -106,6 +111,7 @@ export const uploadFile = async (file) => {
       mimetype: file.mimetype,
       size: file.size,
       buffer: file.buffer ? "Present" : "Missing",
+      bucket: bucket,
     });
 
     // Generate a unique filename
@@ -118,7 +124,7 @@ export const uploadFile = async (file) => {
 
     // Upload file to Supabase Storage
     const { data, error } = await supabase.storage
-      .from("plants")
+      .from(bucket)
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
         cacheControl: "3600",
@@ -134,7 +140,7 @@ export const uploadFile = async (file) => {
     // Get the public URL
     const {
       data: { publicUrl },
-    } = supabase.storage.from("plants").getPublicUrl(fileName);
+    } = supabase.storage.from(bucket).getPublicUrl(fileName);
 
     console.log("Generated public URL:", publicUrl);
 
