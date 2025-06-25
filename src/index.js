@@ -9,6 +9,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import plantUpdateRoutes from "./routes/plantUpdateRoutes.js";
 import plantRoutes from "./routes/plantRoutes.js";
 import geoGptRoutes from "./routes/geoGptRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -19,8 +20,8 @@ const port = process.env.PORT || 8000;
 // CORS configuration
 const corsOptions = {
   origin: [
-    // "http://localhost:3000",
-    "https://piantare-front-end.vercel.app",
+    "http://localhost:3000",
+    // "https://piantare-front-end.vercel.app",
     // "https://piantare.vercel.app",
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -47,6 +48,7 @@ app.use("/api/plant-updates", plantUpdateRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/plants", plantRoutes);
 app.use("/api/geogpt", geoGptRoutes);
+app.use("/api/projects", projectRoutes);
 
 // Basic test route
 app.get("/", (req, res) => {

@@ -51,7 +51,12 @@ const plantLocationController = {
           company: {
             select: {
               id: true,
-              name: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
           addedBy: {
@@ -166,7 +171,12 @@ const plantLocationController = {
             company: {
               select: {
                 id: true,
-                name: true,
+                user: {
+                  select: {
+                    name: true,
+                    email: true,
+                  },
+                },
               },
             },
             updates: {
@@ -227,7 +237,12 @@ const plantLocationController = {
           company: {
             select: {
               id: true,
-              name: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
         },
@@ -261,7 +276,12 @@ const plantLocationController = {
           company: {
             select: {
               id: true,
-              name: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
         },
@@ -417,7 +437,12 @@ const plantLocationController = {
           company: {
             select: {
               id: true,
-              name: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
           updates: {
@@ -525,7 +550,12 @@ const plantLocationController = {
           company: {
             select: {
               id: true,
-              name: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
             },
           },
           addedBy: {

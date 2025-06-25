@@ -20,36 +20,91 @@ model User {
   password  String
   name      String
   role      UserRole @default(FARMER)
-  bio       String?  // Optional bio field
-  imageUrl  String?  // Optional profile image URL
+  bio       String?  
+  imageUrl  String?  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relationships
-  plantLocations PlantLocation[] // Plants added by this user
-  company        Company?        @relation(fields: [companyId], references: [id])
-  companyId      Int?
+  company   Company?        
+  farmer    Farmer?         
 
   @@map("users")
 }
 
 model Company {
-  id          Int      @id @default(autoincrement())
-  name        String
-  email       String   @unique
-  description String?
-  logoUrl     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relationships
-  users          User[]          // Users associated with this company
-  plantLocations PlantLocation[] // Plants assigned to this company
+  user           User     @relation(fields: [userId], references: [id])
+  userId         Int      @unique
+  projects       Project[]       // Company can sponsor multiple projects
+  plantedPlants  PlantedPlant[] // Company can sponsor multiple planted plants
 
   @@map("companies")
 }
 
-model PlantLocation {
+model Farmer {
+  id        Int      @id @default(autoincrement())
+  farmSize  Float?   // Size in hectares or relevant unit
+  location  String?
+  expertise String[] // Types of farming expertise
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationships
+  user     User      @relation(fields: [userId], references: [id])
+  userId   Int       @unique
+  projects Project[] // Farmer can have multiple projects
+
+  @@map("farmers")
+}
+
+model Project {
+  id              Int      @id @default(autoincrement())
+  name            String
+  description     String?
+  status          ProjectStatus @default(IN_PROGRESS)
+  startDate       DateTime @default(now())
+  endDate         DateTime?
+  areaCoordinates Json?    // Array of [lat, lng] pairs forming a polygon
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Core relationship - Project MUST belong to a Farmer
+  farmerId        Int
+  farmer          Farmer   @relation(fields: [farmerId], references: [id])
+
+  // Optional Company relationship (sponsorship)
+  companyId       Int?
+  company         Company? @relation(fields: [companyId], references: [id])
+
+  // Plants in this project
+  plantedPlants   PlantedPlant[]
+
+  @@map("projects")
+}
+
+model PlantSpecies {
+  id              Int            @id @default(autoincrement())
+  commonName      String         // was nomePopular
+  scientificName  String         // was nomeCientifico
+  origin          String?        // was origem
+  height          String?        // was altura
+  specification   String?        // was especificacao
+  category        PlantCategory  // was categoria
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  // Relationships
+  plantedPlants   PlantedPlant[]
+
+  @@map("plant_species")
+}
+
+model PlantedPlant {
   id          Int      @id @default(autoincrement())
   latitude    Float
   longitude   Float
@@ -59,31 +114,33 @@ model PlantLocation {
   updatedAt   DateTime @updatedAt
 
   // Relationships
-  plant     Plant    @relation(fields: [plantId], references: [id])
-  plantId   Int
-  addedBy   User    @relation(fields: [userId], references: [id])
-  userId    Int
-  company   Company? @relation(fields: [companyId], references: [id])
-  companyId Int?
-  updates   PlantUpdate[] // Updates for this plant
+  speciesId   Int          
+  species     PlantSpecies @relation(fields: [speciesId], references: [id])
+  
+  projectId   Int
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  companyId   Int?
+  company     Company?    @relation(fields: [companyId], references: [id])
+  
+  updates     PlantUpdate[]
 
-  @@map("plant_locations")
+  @@map("planted_plants")
 }
 
 model PlantUpdate {
   id           Int          @id @default(autoincrement())
   height       Float
-  width        Float
+  diameter     Float        // Changed from width to diameter
   healthStatus HealthStatus @default(HEALTHY)
   notes        String?
-  imageUrl     String?      // URL to the update image (optional)
-  updateDate   DateTime     @default(now())
+  imageUrl     String?      
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  // Relationships
-  plant    PlantLocation @relation(fields: [plantId], references: [id], onDelete: Cascade)
-  plantId  Int
+  // Relationships with cascade delete
+  plantedPlantId  Int
+  plantedPlant    PlantedPlant @relation(fields: [plantedPlantId], references: [id], onDelete: Cascade)
 
   @@map("plant_updates")
 }
@@ -112,19 +169,12 @@ enum PlantCategory {
   AQUATIC_OR_MARSH   // was PLANTAS_AQUATICAS_OU_PALUSTRES
 }
 
-model Plant {
-  id              Int            @id @default(autoincrement())
-  commonName      String         // was nomePopular
-  scientificName  String         // was nomeCientifico
-  origin          String?        // was origem
-  height          String?        // was altura
-  specification   String?        // was especificacao
-  category        PlantCategory  // was categoria
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  
-  // Relationships
-  locations       PlantLocation[]
-
-  @@map("plants")
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+  CANCELLED
 }
+
+

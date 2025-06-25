@@ -110,7 +110,7 @@ async function importTrees() {
     }
 
     // First delete existing trees to avoid duplicates
-    await prisma.plant.deleteMany({
+    await prisma.plantSpecies.deleteMany({
       where: {
         OR: [
           { category: PlantCategory.TREES },
@@ -120,7 +120,7 @@ async function importTrees() {
     });
 
     // Import new trees
-    const result = await prisma.plant.createMany({
+    const result = await prisma.plantSpecies.createMany({
       data: trees,
     });
 
@@ -128,7 +128,7 @@ async function importTrees() {
 
     // Log some sample data to verify specifications are complete
     console.log("\nSample imported trees (to verify specifications):");
-    const sampleTrees = await prisma.plant.findMany({
+    const sampleTrees = await prisma.plantSpecies.findMany({
       take: 5,
       orderBy: { commonName: "asc" },
     });
