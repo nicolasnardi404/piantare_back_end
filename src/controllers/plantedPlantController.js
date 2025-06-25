@@ -579,6 +579,194 @@ const plantedPlantController = {
         .json({ error: error.message || "Failed to assign plant to company" });
     }
   },
+
+  // Get farmer's dashboard data (plants with stats)
+  async getFarmerDashboardData(req, res) {
+    try {
+      const { userId } = req.user;
+
+      // First get the farmer's ID
+      const farmer = await prisma.farmer.findUnique({
+        where: { userId },
+      });
+
+      if (!farmer) {
+        return res.status(400).json({ error: "User is not a farmer" });
+      }
+
+      // Get all plants for this farmer with minimal data needed for the dashboard
+      const plants = await prisma.plantedPlant.findMany({
+        where: {
+          project: {
+            farmerId: farmer.id,
+          },
+        },
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          plantedAt: true,
+          species: {
+            select: {
+              commonName: true,
+              scientificName: true,
+              category: true,
+            },
+          },
+          updates: {
+            select: {
+              healthStatus: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      });
+
+      // Calculate statistics
+      const stats = {
+        totalPlants: plants.length,
+        healthyPlants: 0,
+        needsAttention: 0,
+        sickPlants: 0,
+      };
+
+      plants.forEach((plant) => {
+        const lastUpdate = plant.updates[0];
+        if (!lastUpdate) {
+          stats.healthyPlants++;
+        } else {
+          switch (lastUpdate.healthStatus) {
+            case "HEALTHY":
+              stats.healthyPlants++;
+              break;
+            case "NEEDS_ATTENTION":
+              stats.needsAttention++;
+              break;
+            case "SICK":
+              stats.sickPlants++;
+              break;
+            default:
+              stats.healthyPlants++;
+          }
+        }
+      });
+
+      res.json({
+        stats,
+        plants,
+      });
+    } catch (error) {
+      console.error("Error in getFarmerDashboardData:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to fetch farmer's dashboard data" });
+    }
+  },
+
+  // Get farmer's projects with plant counts
+  async getFarmerProjects(req, res) {
+    try {
+      const { userId } = req.user;
+
+      // Get farmer's ID
+      const farmer = await prisma.farmer.findUnique({
+        where: { userId },
+      });
+
+      if (!farmer) {
+        return res.status(400).json({ error: "User is not a farmer" });
+      }
+
+      // Get all projects with plant counts
+      const projects = await prisma.project.findMany({
+        where: {
+          farmerId: farmer.id,
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          areaCoordinates: true,
+          _count: {
+            select: {
+              plantedPlants: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      res.json(projects);
+    } catch (error) {
+      console.error("Error in getFarmerProjects:", error);
+      res.status(500).json({ error: "Failed to fetch farmer's projects" });
+    }
+  },
+
+  // Get farmer's plants table data
+  async getFarmerPlantsTable(req, res) {
+    try {
+      const { userId } = req.user;
+
+      // Get farmer's ID
+      const farmer = await prisma.farmer.findUnique({
+        where: { userId },
+      });
+
+      if (!farmer) {
+        return res.status(400).json({ error: "User is not a farmer" });
+      }
+
+      // Get plants with data needed for the table
+      const plants = await prisma.plantedPlant.findMany({
+        where: {
+          project: {
+            farmerId: farmer.id,
+          },
+        },
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          species: {
+            select: {
+              commonName: true,
+              scientificName: true,
+            },
+          },
+          updates: {
+            select: {
+              healthStatus: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+        orderBy: {
+          plantedAt: "desc",
+        },
+      });
+
+      res.json(plants);
+    } catch (error) {
+      console.error("Error in getFarmerPlantsTable:", error);
+      res
+        .status(500)
+        .json({ error: "Failed to fetch farmer's plants table data" });
+    }
+  },
 };
 
 export default plantedPlantController;

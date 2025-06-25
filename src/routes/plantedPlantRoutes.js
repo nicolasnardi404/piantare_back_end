@@ -10,6 +10,25 @@ router.get("/map-markers", plantedPlantController.getMapMarkers);
 // Protected routes (authentication required)
 router.use(authenticateToken);
 
+// Farmer dashboard optimized routes
+router.get(
+  "/farmer/dashboard",
+  checkRole(["FARMER"]),
+  plantedPlantController.getFarmerDashboardData
+);
+
+router.get(
+  "/farmer/projects",
+  checkRole(["FARMER"]),
+  plantedPlantController.getFarmerProjects
+);
+
+router.get(
+  "/farmer/plants-table",
+  checkRole(["FARMER"]),
+  plantedPlantController.getFarmerPlantsTable
+);
+
 // Get farmer's plants (only for farmers)
 router.get(
   "/farmer/plants",

@@ -6,132 +6,67 @@ const projectController = {
   async getProjects(req, res) {
     try {
       const { userId, role } = req.user;
-      let projects;
 
-      if (role === "ADMIN") {
-        // Admins can see all projects
-        projects = await prisma.project.findMany({
-          include: {
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-                role: true,
-              },
-            },
-            company: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            farmer: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            locations: true,
-            _count: {
-              select: { locations: true },
-            },
-          },
+      let whereClause = {};
+
+      if (role === "FARMER") {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
         });
+
+        if (!farmer) {
+          return res.status(400).json({ error: "User is not a farmer" });
+        }
+
+        whereClause.farmerId = farmer.id;
       } else if (role === "COMPANY") {
-        // Companies see their own projects
-        projects = await prisma.project.findMany({
-          where: {
-            OR: [{ userId }, { company: { userId } }],
-          },
-          include: {
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-                role: true,
-              },
-            },
-            company: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            farmer: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            locations: true,
-            _count: {
-              select: { locations: true },
-            },
-          },
+        const company = await prisma.company.findUnique({
+          where: { userId },
         });
-      } else {
-        // Farmers see their own projects
-        projects = await prisma.project.findMany({
-          where: {
-            OR: [{ userId }, { farmer: { userId } }],
-          },
-          include: {
-            createdBy: {
-              select: {
-                id: true,
-                name: true,
-                role: true,
-              },
-            },
-            company: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            farmer: {
-              select: {
-                id: true,
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            locations: true,
-            _count: {
-              select: { locations: true },
-            },
-          },
-        });
+
+        if (!company) {
+          return res
+            .status(400)
+            .json({ error: "User is not associated with a company" });
+        }
+
+        whereClause.companyId = company.id;
       }
+      // Admin can see all projects (no where clause needed)
+
+      const projects = await prisma.project.findMany({
+        where: whereClause,
+        include: {
+          farmer: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          company: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          _count: {
+            select: {
+              plantedPlants: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
 
       res.json(projects);
     } catch (error) {
@@ -214,61 +149,33 @@ const projectController = {
   // Create a new project
   async createProject(req, res) {
     try {
-      const { userId, role } = req.user;
+      const { userId } = req.user;
       const { name, description, status, startDate, endDate, areaCoordinates } =
         req.body;
 
-      const projectData = {
-        name,
-        description,
-        status,
-        startDate: startDate ? new Date(startDate) : new Date(),
-        endDate: endDate ? new Date(endDate) : null,
-        areaCoordinates,
-        userId,
-      };
+      // First get the farmer's ID
+      const farmer = await prisma.farmer.findUnique({
+        where: { userId },
+      });
 
-      // Add company or farmer relationship based on user role
-      if (role === "COMPANY") {
-        const company = await prisma.company.findFirst({
-          where: { userId },
-        });
-        if (company) {
-          projectData.companyId = company.id;
-        }
-      } else if (role === "FARMER") {
-        const farmer = await prisma.farmer.findFirst({
-          where: { userId },
-        });
-        if (farmer) {
-          projectData.farmerId = farmer.id;
-        }
+      if (!farmer) {
+        return res.status(400).json({ error: "User is not a farmer" });
       }
 
+      // Create the project
       const project = await prisma.project.create({
-        data: projectData,
+        data: {
+          name,
+          description,
+          status,
+          startDate: new Date(startDate),
+          endDate: endDate ? new Date(endDate) : null,
+          areaCoordinates: areaCoordinates,
+          farmerId: farmer.id,
+        },
         include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
           farmer: {
-            select: {
-              id: true,
+            include: {
               user: {
                 select: {
                   name: true,
@@ -278,7 +185,9 @@ const projectController = {
             },
           },
           _count: {
-            select: { locations: true },
+            select: {
+              plantedPlants: true,
+            },
           },
         },
       });
@@ -286,23 +195,24 @@ const projectController = {
       res.status(201).json(project);
     } catch (error) {
       console.error("Error in createProject:", error);
-      res.status(500).json({ error: "Failed to create project" });
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to create project" });
     }
   },
 
   // Update a project
   async updateProject(req, res) {
     try {
+      const { id } = req.params;
       const { userId, role } = req.user;
-      const projectId = parseInt(req.params.id);
       const { name, description, status, startDate, endDate, areaCoordinates } =
         req.body;
 
-      // Check if project exists and user has access
+      // Check if project exists and get farmer info
       const existingProject = await prisma.project.findUnique({
-        where: { id: projectId },
+        where: { id: parseInt(id) },
         include: {
-          company: true,
           farmer: true,
         },
       });
@@ -311,49 +221,31 @@ const projectController = {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Check if user has access to update this project
-      const hasAccess =
-        existingProject.userId === userId ||
-        existingProject.company?.userId === userId ||
-        existingProject.farmer?.userId === userId ||
-        role === "ADMIN";
+      // Check authorization
+      if (role === "FARMER") {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
+        });
 
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        if (!farmer || existingProject.farmerId !== farmer.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
+      // Update the project
       const project = await prisma.project.update({
-        where: { id: projectId },
+        where: { id: parseInt(id) },
         data: {
           name,
           description,
           status,
           startDate: startDate ? new Date(startDate) : undefined,
           endDate: endDate ? new Date(endDate) : null,
-          areaCoordinates,
+          areaCoordinates: areaCoordinates,
         },
         include: {
-          createdBy: {
-            select: {
-              id: true,
-              name: true,
-              role: true,
-            },
-          },
-          company: {
-            select: {
-              id: true,
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
           farmer: {
-            select: {
-              id: true,
+            include: {
               user: {
                 select: {
                   name: true,
@@ -363,7 +255,9 @@ const projectController = {
             },
           },
           _count: {
-            select: { locations: true },
+            select: {
+              plantedPlants: true,
+            },
           },
         },
       });
@@ -371,21 +265,22 @@ const projectController = {
       res.json(project);
     } catch (error) {
       console.error("Error in updateProject:", error);
-      res.status(500).json({ error: "Failed to update project" });
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to update project" });
     }
   },
 
   // Delete a project
   async deleteProject(req, res) {
     try {
+      const { id } = req.params;
       const { userId, role } = req.user;
-      const projectId = parseInt(req.params.id);
 
-      // Check if project exists and user has access
+      // Check if project exists and get farmer info
       const project = await prisma.project.findUnique({
-        where: { id: projectId },
+        where: { id: parseInt(id) },
         include: {
-          company: true,
           farmer: true,
         },
       });
@@ -394,25 +289,28 @@ const projectController = {
         return res.status(404).json({ error: "Project not found" });
       }
 
-      // Check if user has access to delete this project
-      const hasAccess =
-        project.userId === userId ||
-        project.company?.userId === userId ||
-        project.farmer?.userId === userId ||
-        role === "ADMIN";
+      // Check authorization
+      if (role === "FARMER") {
+        const farmer = await prisma.farmer.findUnique({
+          where: { userId },
+        });
 
-      if (!hasAccess) {
-        return res.status(403).json({ error: "Access denied" });
+        if (!farmer || project.farmerId !== farmer.id) {
+          return res.status(403).json({ error: "Access denied" });
+        }
       }
 
+      // Delete the project (this will cascade delete all related plantedPlants)
       await prisma.project.delete({
-        where: { id: projectId },
+        where: { id: parseInt(id) },
       });
 
       res.json({ message: "Project deleted successfully" });
     } catch (error) {
       console.error("Error in deleteProject:", error);
-      res.status(500).json({ error: "Failed to delete project" });
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to delete project" });
     }
   },
 };
