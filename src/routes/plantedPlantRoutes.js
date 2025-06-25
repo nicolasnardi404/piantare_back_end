@@ -4,6 +4,14 @@ import { authenticateToken, checkRole } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// Admin routes
+router.get(
+  "/admin/plants",
+  authenticateToken,
+  checkRole(["ADMIN"]),
+  plantedPlantController.getAdminPlantsList
+);
+
 // Public routes (no authentication required)
 router.get("/map-markers", plantedPlantController.getMapMarkers);
 

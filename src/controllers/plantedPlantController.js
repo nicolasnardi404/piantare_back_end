@@ -109,6 +109,7 @@ const plantedPlantController = {
           },
           project: {
             select: {
+              name: true,
               farmer: {
                 select: {
                   user: {
@@ -133,6 +134,11 @@ const plantedPlantController = {
           },
         },
       });
+
+      // If no plants found, return empty array instead of null
+      if (!plants || plants.length === 0) {
+        return res.json([]);
+      }
 
       res.json(plants);
     } catch (error) {
@@ -172,6 +178,23 @@ const plantedPlantController = {
               commonName: true,
               scientificName: true,
               category: true,
+            },
+          },
+          project: {
+            select: {
+              id: true,
+              name: true,
+              farmer: {
+                select: {
+                  id: true,
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
           updates: {
@@ -536,10 +559,13 @@ const plantedPlantController = {
       }
 
       // Update the planted plant with the company ID
-      const plant = await prisma.plantedPlant.update({
+      const updatedPlant = await prisma.plantedPlant.update({
         where: { id: parseInt(id) },
         data: { companyId: parseInt(companyId) },
-        include: {
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
           species: {
             select: {
               commonName: true,
@@ -549,19 +575,11 @@ const plantedPlantController = {
           project: {
             select: {
               name: true,
-              farmer: {
-                select: {
-                  user: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
-              },
             },
           },
           company: {
             select: {
+              id: true,
               user: {
                 select: {
                   name: true,
@@ -572,12 +590,10 @@ const plantedPlantController = {
         },
       });
 
-      res.json(plant);
+      res.json(updatedPlant);
     } catch (error) {
       console.error("Error in assignToCompany:", error);
-      res
-        .status(500)
-        .json({ error: error.message || "Failed to assign plant to company" });
+      res.status(500).json({ error: "Failed to assign plant to company" });
     }
   },
 
@@ -868,6 +884,48 @@ const plantedPlantController = {
     } catch (error) {
       console.error("Error in getFarmerDashboardComplete:", error);
       res.status(500).json({ error: "Failed to fetch dashboard data" });
+    }
+  },
+
+  // Get plants list for admin panel
+  async getAdminPlantsList(req, res) {
+    try {
+      const plants = await prisma.plantedPlant.findMany({
+        select: {
+          id: true,
+          latitude: true,
+          longitude: true,
+          species: {
+            select: {
+              commonName: true,
+              scientificName: true,
+            },
+          },
+          project: {
+            select: {
+              name: true,
+            },
+          },
+          company: {
+            select: {
+              id: true,
+              user: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      res.json(plants);
+    } catch (error) {
+      console.error("Error in getAdminPlantsList:", error);
+      res.status(500).json({ error: "Failed to fetch plants list" });
     }
   },
 };

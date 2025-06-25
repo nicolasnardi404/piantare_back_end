@@ -10,19 +10,18 @@ const companyController = {
     try {
       const companies = await prisma.company.findMany({
         include: {
-          users: {
+          user: {
             select: {
               id: true,
               name: true,
               email: true,
-              role: true,
             },
           },
-          plantLocations: true,
         },
       });
       res.json(companies);
     } catch (error) {
+      console.error("Error in getAllCompanies:", error);
       res.status(500).json({ error: "Failed to fetch companies" });
     }
   },
