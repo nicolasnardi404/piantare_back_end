@@ -1,11 +1,12 @@
 import { PrismaClient } from "@prisma/client";
+
 const prisma = new PrismaClient();
 
 const plantController = {
   // Get lightweight list of all plants (no pagination)
   async getPlantsList(req, res) {
     try {
-      const plants = await prisma.plant.findMany({
+      const plants = await prisma.plantSpecies.findMany({
         select: {
           id: true,
           commonName: true,
