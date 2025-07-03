@@ -455,9 +455,8 @@ const plantedPlantController = {
       const {
         latitude,
         longitude,
-        speciesId,
+        plantGroupId,
         description,
-        projectId,
         imageUrl,
         height,
         diameter,
@@ -468,8 +467,7 @@ const plantedPlantController = {
       if (
         !latitude ||
         !longitude ||
-        !speciesId ||
-        !projectId ||
+        !plantGroupId ||
         !imageUrl ||
         !height ||
         !diameter
@@ -479,29 +477,31 @@ const plantedPlantController = {
         });
       }
 
-      // Verify that the species exists
-      const species = await prisma.plantSpecies.findUnique({
-        where: { id: parseInt(speciesId) },
-      });
-
-      if (!species) {
-        return res.status(404).json({ error: "Plant species not found" });
-      }
-
-      // Verify project exists and belongs to the farmer
-      const farmer = await prisma.farmer.findUnique({
-        where: { userId },
+      // Verify that the plant group exists and belongs to the farmer
+      const plantGroup = await prisma.plantGroup.findUnique({
+        where: { id: parseInt(plantGroupId) },
         include: {
-          projects: {
-            where: { id: parseInt(projectId) },
+          project: {
+            include: {
+              farmer: {
+                include: {
+                  user: true,
+                },
+              },
+            },
           },
         },
       });
 
-      if (!farmer || farmer.projects.length === 0) {
+      if (!plantGroup) {
+        return res.status(404).json({ error: "Plant group not found" });
+      }
+
+      // Verify the farmer owns the project
+      if (plantGroup.project.farmer.user.id !== userId) {
         return res
           .status(403)
-          .json({ error: "Project not found or not authorized" });
+          .json({ error: "Not authorized to add plants to this group" });
       }
 
       // Use a transaction to create both the planted plant and initial update
@@ -511,21 +511,26 @@ const plantedPlantController = {
           data: {
             latitude: parseFloat(latitude),
             longitude: parseFloat(longitude),
-            speciesId: parseInt(speciesId),
             description,
-            projectId: parseInt(projectId),
+            plantGroupId: parseInt(plantGroupId),
           },
         });
 
-        // Create the initial plant update
-        await prisma.plantUpdate.create({
+        // Create a new group update with the initial plant update
+        await prisma.plantGroupUpdate.create({
           data: {
-            plantedPlantId: newPlant.id,
-            imageUrl,
-            height: parseFloat(height),
-            diameter: parseFloat(diameter),
-            notes: "Initial planting",
-            healthStatus: "HEALTHY",
+            plantGroupId: parseInt(plantGroupId),
+            plantUpdates: {
+              create: [
+                {
+                  height: parseFloat(height),
+                  diameter: parseFloat(diameter),
+                  healthStatus: "HEALTHY",
+                  imageUrl,
+                  notes: "Initial planting",
+                },
+              ],
+            },
           },
         });
 
@@ -533,21 +538,19 @@ const plantedPlantController = {
         return prisma.plantedPlant.findUnique({
           where: { id: newPlant.id },
           include: {
-            species: true,
-            project: {
+            plantGroup: {
               include: {
-                farmer: {
+                species: true,
+                project: {
                   include: {
-                    user: true,
+                    farmer: {
+                      include: {
+                        user: true,
+                      },
+                    },
                   },
                 },
               },
-            },
-            updates: {
-              orderBy: {
-                createdAt: "desc",
-              },
-              take: 1,
             },
           },
         });
@@ -879,33 +882,42 @@ const plantedPlantController = {
               endDate: true,
               areaCoordinates: true,
               mapImageUrl: true,
-              plantedPlants: {
+              plantGroups: {
                 select: {
                   id: true,
-                  latitude: true,
-                  longitude: true,
-                  projectId: true,
                   species: {
                     select: {
                       commonName: true,
                       scientificName: true,
                     },
                   },
-                  updates: {
+                  plantedPlants: {
                     select: {
-                      healthStatus: true,
-                      createdAt: true,
+                      id: true,
+                      latitude: true,
+                      longitude: true,
+                      plantedAt: true,
                     },
+                  },
+                  groupUpdates: {
                     orderBy: {
-                      createdAt: "desc",
+                      id: "desc",
                     },
                     take: 1,
+                    select: {
+                      plantUpdates: {
+                        select: {
+                          healthStatus: true,
+                          createdAt: true,
+                        },
+                      },
+                    },
                   },
                 },
               },
               _count: {
                 select: {
-                  plantedPlants: true,
+                  plantGroups: true,
                 },
               },
             },
@@ -925,33 +937,59 @@ const plantedPlantController = {
         sickPlants: 0,
       };
 
-      farmer.projects.forEach((project) => {
-        project.plantedPlants.forEach((plant) => {
-          stats.totalPlants++;
-          const lastUpdate = plant.updates[0];
-          if (!lastUpdate) {
-            stats.healthyPlants++;
+      // Process projects and calculate totals
+      const projects = farmer.projects.map((project) => {
+        let projectStats = {
+          totalPlants: 0,
+          healthyPlants: 0,
+          needsAttention: 0,
+          sickPlants: 0,
+        };
+
+        project.plantGroups.forEach((group) => {
+          const plantCount = group.plantedPlants.length;
+          projectStats.totalPlants += plantCount;
+          stats.totalPlants += plantCount;
+
+          // Get health status from the latest group update
+          const latestUpdate = group.groupUpdates[0];
+          if (!latestUpdate || !latestUpdate.plantUpdates.length) {
+            // If no updates, consider plants healthy by default
+            projectStats.healthyPlants += plantCount;
+            stats.healthyPlants += plantCount;
           } else {
-            switch (lastUpdate.healthStatus) {
-              case "HEALTHY":
-                stats.healthyPlants++;
-                break;
-              case "NEEDS_ATTENTION":
-                stats.needsAttention++;
-                break;
-              case "SICK":
-                stats.sickPlants++;
-                break;
-              default:
-                stats.healthyPlants++;
-            }
+            // Count health statuses from the latest group update
+            latestUpdate.plantUpdates.forEach((update) => {
+              switch (update.healthStatus) {
+                case "HEALTHY":
+                  projectStats.healthyPlants++;
+                  stats.healthyPlants++;
+                  break;
+                case "NEEDS_ATTENTION":
+                  projectStats.needsAttention++;
+                  stats.needsAttention++;
+                  break;
+                case "SICK":
+                  projectStats.sickPlants++;
+                  stats.sickPlants++;
+                  break;
+                default:
+                  projectStats.healthyPlants++;
+                  stats.healthyPlants++;
+              }
+            });
           }
         });
+
+        return {
+          ...project,
+          stats: projectStats,
+        };
       });
 
       res.json({
         stats,
-        projects: farmer.projects,
+        projects,
       });
     } catch (error) {
       console.error("Error in getFarmerDashboardComplete:", error);

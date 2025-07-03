@@ -43,10 +43,10 @@ const plantController = {
       }
 
       // Get total count
-      const total = await prisma.plant.count({ where });
+      const total = await prisma.plantSpecies.count({ where });
 
       // Get paginated plants
-      const plants = await prisma.plant.findMany({
+      const plants = await prisma.plantSpecies.findMany({
         where,
         orderBy: {
           commonName: "asc",
@@ -69,19 +69,29 @@ const plantController = {
   async getPlant(req, res) {
     try {
       const { id } = req.params;
-      const plant = await prisma.plant.findUnique({
+      const plant = await prisma.plantSpecies.findUnique({
         where: { id: parseInt(id) },
         include: {
-          locations: {
+          plantedPlants: {
             select: {
               id: true,
               latitude: true,
               longitude: true,
               plantedAt: true,
-              addedBy: {
+              project: {
                 select: {
                   id: true,
                   name: true,
+                  farmer: {
+                    select: {
+                      user: {
+                        select: {
+                          id: true,
+                          name: true,
+                        },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -117,7 +127,7 @@ const plantController = {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const plant = await prisma.plant.create({
+      const plant = await prisma.plantSpecies.create({
         data: {
           commonName,
           scientificName,
@@ -148,7 +158,7 @@ const plantController = {
         category,
       } = req.body;
 
-      const plant = await prisma.plant.update({
+      const plant = await prisma.plantSpecies.update({
         where: { id: parseInt(id) },
         data: {
           commonName,
@@ -173,25 +183,25 @@ const plantController = {
       const { id } = req.params;
 
       // Check if plant has any locations
-      const plant = await prisma.plant.findUnique({
+      const plant = await prisma.plantSpecies.findUnique({
         where: { id: parseInt(id) },
         include: {
-          locations: true,
+          plantedPlants: true,
         },
       });
 
-      if (plant.locations.length > 0) {
+      if (plant.plantedPlants.length > 0) {
         return res.status(400).json({
           error:
-            "Cannot delete plant that has locations. Remove all locations first.",
+            "Cannot delete plant species that has planted plants. Remove all planted plants first.",
         });
       }
 
-      await prisma.plant.delete({
+      await prisma.plantSpecies.delete({
         where: { id: parseInt(id) },
       });
 
-      res.json({ message: "Plant deleted successfully" });
+      res.json({ message: "Plant species deleted successfully" });
     } catch (error) {
       console.error("Error in deletePlant:", error);
       res.status(500).json({ error: "Failed to delete plant" });

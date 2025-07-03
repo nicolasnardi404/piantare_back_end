@@ -7,7 +7,49 @@ const farmerController = {
     try {
       const farmer = await prisma.farmer.findUnique({
         where: { userId: req.user.id },
-        include: { user: true },
+        include: {
+          projects: {
+            orderBy: { startDate: "desc" },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              areaCoordinates: true,
+              mapImageUrl: true,
+              plantGroups: {
+                select: {
+                  id: true,
+                  species: {
+                    select: {
+                      commonName: true,
+                      scientificName: true,
+                    },
+                  },
+                  plantedPlants: {
+                    select: {
+                      id: true,
+                      latitude: true,
+                      longitude: true,
+                      plantGroupId: true,
+                      updates: {
+                        select: {
+                          healthStatus: true,
+                          createdAt: true,
+                        },
+                        orderBy: { createdAt: "desc" },
+                        take: 1,
+                      },
+                    },
+                  },
+                },
+              },
+              _count: { select: { plantedPlants: true } },
+            },
+          },
+        },
       });
 
       if (!farmer) {

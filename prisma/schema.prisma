@@ -40,7 +40,6 @@ model Company {
   // Relationships
   user           User     @relation(fields: [userId], references: [id])
   userId         Int      @unique
-  projects       Project[]       // Company can sponsor multiple projects
   plantedPlants  PlantedPlant[] // Company can sponsor multiple planted plants
 
   @@map("companies")
@@ -78,12 +77,8 @@ model Project {
   farmerId        Int
   farmer          Farmer   @relation(fields: [farmerId], references: [id])
 
-  // Optional Company relationship (sponsorship)
-  companyId       Int?
-  company         Company? @relation(fields: [companyId], references: [id])
-
   // Plants in this project
-  plantedPlants   PlantedPlant[]
+  plantGroups     PlantGroup[]
 
   @@map("projects")
 }
@@ -99,51 +94,57 @@ model PlantSpecies {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   
-  // Relationships
-  plantedPlants   PlantedPlant[]
-
+  // Add PlantGroup relation
+  plantGroups     PlantGroup[]
   @@map("plant_species")
 }
 
 model PlantedPlant {
-  id          Int      @id @default(autoincrement())
-  latitude    Float
-  longitude   Float
-  plantedAt   DateTime @default(now())
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relationships
-  speciesId   Int          
-  species     PlantSpecies @relation(fields: [speciesId], references: [id])
-  
-  projectId   Int
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  companyId   Int?
-  company     Company?    @relation(fields: [companyId], references: [id])
-  
-  updates     PlantUpdate[]
+  id            Int          @id @default(autoincrement())
+  latitude      Float
+  longitude     Float
+  plantedAt     DateTime     @default(now())
+  plantGroupId  Int
+  plantGroup    PlantGroup   @relation(fields: [plantGroupId], references: [id])
+  companyId     Int?
+  company       Company?     @relation(fields: [companyId], references: [id])
 
   @@map("planted_plants")
 }
 
 model PlantUpdate {
-  id           Int          @id @default(autoincrement())
-  height       Float
-  diameter     Float        // Changed from width to diameter
-  healthStatus HealthStatus @default(HEALTHY)
-  notes        String?
-  imageUrl     String?      
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                Int               @id @default(autoincrement())
+  height            Float
+  diameter          Float
+  healthStatus      HealthStatus      @default(HEALTHY)
+  imageUrl          String?      
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
 
-  // Relationships with cascade delete
-  plantedPlantId  Int
-  plantedPlant    PlantedPlant @relation(fields: [plantedPlantId], references: [id], onDelete: Cascade)
-
+  plantGroupUpdateId Int
+  plantGroupUpdate   PlantGroupUpdate @relation(fields: [plantGroupUpdateId], references: [id])
   @@map("plant_updates")
+}
+
+model PlantGroup {
+  id              Int                 @id @default(autoincrement())
+  speciesId       Int
+  species         PlantSpecies        @relation(fields: [speciesId], references: [id])
+  projectId       Int
+  project         Project             @relation(fields: [projectId], references: [id])
+  plantedPlants   PlantedPlant[]
+  groupUpdates    PlantGroupUpdate[]  // <-- Each update session for this group
+  successionStage SuccessionStage     @default(PIONEER)
+  @@map("plant_groups")
+}
+
+model PlantGroupUpdate {
+  id           Int           @id @default(autoincrement())
+  plantGroupId Int
+  plantGroup   PlantGroup    @relation(fields: [plantGroupId], references: [id])
+  plantUpdates PlantUpdate[] // <-- All plant measurements in this session
+  // Add any additional fields as needed (e.g., date, notes)
+  @@map("plant_group_updates")
 }
 
 enum UserRole {
@@ -176,6 +177,12 @@ enum ProjectStatus {
   COMPLETED
   ON_HOLD
   CANCELLED
+}
+
+enum SuccessionStage {
+  PIONEER
+  SECONDARY
+  CLIMAX
 }
 
 
