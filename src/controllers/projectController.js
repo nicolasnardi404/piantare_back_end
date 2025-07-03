@@ -32,9 +32,18 @@ const projectController = {
             startDate: true,
             endDate: true,
             areaCoordinates: true,
+            plantGroups: {
+              select: {
+                _count: {
+                  select: {
+                    plantedPlants: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
-                plantedPlants: true,
+                plantGroups: true,
               },
             },
           },
@@ -42,6 +51,15 @@ const projectController = {
             startDate: "desc",
           },
         });
+
+        // Calculate total plants for each project
+        projects = projects.map((project) => ({
+          ...project,
+          totalPlants: project.plantGroups.reduce(
+            (sum, group) => sum + group._count.plantedPlants,
+            0
+          ),
+        }));
       } else if (role === "COMPANY") {
         const company = await prisma.company.findUnique({
           where: { userId },
@@ -63,9 +81,18 @@ const projectController = {
             startDate: true,
             endDate: true,
             areaCoordinates: true,
+            plantGroups: {
+              select: {
+                _count: {
+                  select: {
+                    plantedPlants: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
-                plantedPlants: true,
+                plantGroups: true,
               },
             },
             farmer: {
@@ -82,6 +109,15 @@ const projectController = {
             startDate: "desc",
           },
         });
+
+        // Calculate total plants for each project
+        projects = projects.map((project) => ({
+          ...project,
+          totalPlants: project.plantGroups.reduce(
+            (sum, group) => sum + group._count.plantedPlants,
+            0
+          ),
+        }));
       }
 
       res.json(projects);
@@ -120,9 +156,20 @@ const projectController = {
             startDate: true,
             endDate: true,
             areaCoordinates: true,
+            plantGroups: {
+              select: {
+                id: true,
+                species: true,
+                _count: {
+                  select: {
+                    plantedPlants: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
-                plantedPlants: true,
+                plantGroups: true,
               },
             },
             company: {
@@ -136,6 +183,13 @@ const projectController = {
             },
           },
         });
+
+        if (project) {
+          project.totalPlants = project.plantGroups.reduce(
+            (sum, group) => sum + group._count.plantedPlants,
+            0
+          );
+        }
       } else if (role === "COMPANY") {
         const company = await prisma.company.findUnique({
           where: { userId },
@@ -158,9 +212,20 @@ const projectController = {
             startDate: true,
             endDate: true,
             areaCoordinates: true,
+            plantGroups: {
+              select: {
+                id: true,
+                species: true,
+                _count: {
+                  select: {
+                    plantedPlants: true,
+                  },
+                },
+              },
+            },
             _count: {
               select: {
-                plantedPlants: true,
+                plantGroups: true,
               },
             },
             farmer: {
@@ -174,6 +239,13 @@ const projectController = {
             },
           },
         });
+
+        if (project) {
+          project.totalPlants = project.plantGroups.reduce(
+            (sum, group) => sum + group._count.plantedPlants,
+            0
+          );
+        }
       }
 
       if (!project) {
@@ -240,7 +312,7 @@ const projectController = {
           },
           _count: {
             select: {
-              plantedPlants: true,
+              plantGroups: true,
             },
           },
         },
