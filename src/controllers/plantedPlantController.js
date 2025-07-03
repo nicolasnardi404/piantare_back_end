@@ -899,6 +899,11 @@ const plantedPlantController = {
                       plantedAt: true,
                     },
                   },
+                  _count: {
+                    select: {
+                      plantedPlants: true,
+                    },
+                  },
                   groupUpdates: {
                     orderBy: {
                       id: "desc",
@@ -947,7 +952,8 @@ const plantedPlantController = {
         };
 
         project.plantGroups.forEach((group) => {
-          const plantCount = group.plantedPlants.length;
+          const plantCount =
+            group._count?.plantedPlants ?? group.plantedPlants.length;
           projectStats.totalPlants += plantCount;
           stats.totalPlants += plantCount;
 

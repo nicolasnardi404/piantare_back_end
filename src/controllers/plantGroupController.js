@@ -131,7 +131,8 @@ const plantGroupController = {
         coordinates.map((coord) =>
           prisma.plantedPlant.create({
             data: {
-              coordinates: coord,
+              latitude: parseFloat(coord.lat), // Extract latitude from coord object
+              longitude: parseFloat(coord.lng), // Extract longitude from coord object
               plantGroup: {
                 connect: { id: parseInt(groupId) },
               },
@@ -144,6 +145,7 @@ const plantGroupController = {
       const updatedGroup = await prisma.plantGroup.findUnique({
         where: { id: parseInt(groupId) },
         include: {
+          species: true, // Include species data
           _count: {
             select: {
               plantedPlants: true,
@@ -152,7 +154,9 @@ const plantGroupController = {
           plantedPlants: {
             select: {
               id: true,
-              coordinates: true,
+              latitude: true,
+              longitude: true,
+              plantedAt: true,
             },
           },
         },
