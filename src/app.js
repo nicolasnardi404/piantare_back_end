@@ -9,6 +9,7 @@ import uploadRoutes from "./routes/uploadRoutes.js";
 import geoGptRoutes from "./routes/geoGptRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import plantGroupRoutes from "./routes/plantGroupRoutes.js";
 
 const app = express();
 
@@ -24,5 +25,6 @@ app.use("/api/companies", companyRoutes);
 app.use("/api/uploads", uploadRoutes);
 app.use("/api/geogpt", geoGptRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/plant-groups", plantGroupRoutes);
 
 export default app;

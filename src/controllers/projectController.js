@@ -156,6 +156,7 @@ const projectController = {
             startDate: true,
             endDate: true,
             areaCoordinates: true,
+            mapImageUrl: true,
             plantGroups: {
               select: {
                 id: true,
@@ -170,15 +171,6 @@ const projectController = {
             _count: {
               select: {
                 plantGroups: true,
-              },
-            },
-            company: {
-              select: {
-                user: {
-                  select: {
-                    name: true,
-                  },
-                },
               },
             },
           },

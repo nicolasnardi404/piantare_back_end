@@ -4,14 +4,26 @@ import { authenticateToken, checkRole } from "../middleware/auth.js";
 
 const router = express.Router();
 
-// All plant group routes require authentication
+// All routes require authentication
 router.use(authenticateToken);
 
-// Create a new plant group (only farmers can create)
-router.post("/", checkRole(["FARMER"]), plantGroupController.createPlantGroup);
+// Create a new plant group in a project
+router.post(
+  "/projects/:projectId/groups",
+  plantGroupController.createPlantGroup
+);
 
-// Get all plant groups in a project (if user has access)
-router.get("/project/:projectId", plantGroupController.getProjectPlantGroups);
+// Add planted plants to a group
+router.post("/groups/:groupId/plants", plantGroupController.addPlantedPlants);
+
+// Get all plant groups for a project
+router.get(
+  "/projects/:projectId/groups",
+  plantGroupController.getProjectPlantGroups
+);
+
+// Delete a plant group
+router.delete("/groups/:groupId", plantGroupController.deletePlantGroup);
 
 // Get details of a specific plant group (if user has access)
 router.get("/:id", plantGroupController.getPlantGroupDetails);
@@ -21,13 +33,6 @@ router.put(
   "/:id",
   checkRole(["FARMER", "ADMIN"]),
   plantGroupController.updatePlantGroup
-);
-
-// Delete a plant group (farmers can only delete their own groups)
-router.delete(
-  "/:id",
-  checkRole(["FARMER", "ADMIN"]),
-  plantGroupController.deletePlantGroup
 );
 
 export default router;
