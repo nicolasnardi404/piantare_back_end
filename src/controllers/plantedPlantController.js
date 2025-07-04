@@ -100,37 +100,21 @@ const plantedPlantController = {
           id: true,
           latitude: true,
           longitude: true,
-          species: {
+          plantGroup: {
             select: {
-              commonName: true,
-              scientificName: true,
-              category: true,
-            },
-          },
-          project: {
-            select: {
-              name: true,
-              farmer: {
+              species: {
                 select: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
+                  commonName: true,
+                  scientificName: true,
+                  category: true,
+                },
+              },
+              project: {
+                select: {
+                  name: true,
                 },
               },
             },
-          },
-          updates: {
-            select: {
-              healthStatus: true,
-              createdAt: true,
-            },
-            orderBy: {
-              createdAt: "desc",
-            },
-            take: 1,
           },
         },
       });
